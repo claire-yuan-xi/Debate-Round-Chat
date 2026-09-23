@@ -23,3 +23,6 @@ export const ROUND_QUERY = defineQuery(
 export const MESSAGES_QUERY = defineQuery(
   `*[_type == "message" && round._ref == $id] | order(sentAt asc){ _id, author, body, sentAt, speechKey }`
 );
+
+// Only readable with a token: the access document's ID contains a dot.
+export const ROUND_JOIN_CODE_QUERY = defineQuery(`*[_id == $accessId][0].joinCode`);
