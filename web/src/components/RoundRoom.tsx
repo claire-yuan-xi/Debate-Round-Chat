@@ -7,37 +7,11 @@ import type { MESSAGES_QUERY_RESULT, ROUND_QUERY_RESULT } from "../../sanity.typ
 import { browserClient } from "@/sanity/browser-client";
 import { MESSAGES_QUERY, ROUND_QUERY } from "@/sanity/queries";
 import { ChatPanel } from "./ChatPanel";
+import { saveChatName, useChatName } from "./chat-name";
 import { useStopwatch } from "./useStopwatch";
 
 export type Round = NonNullable<ROUND_QUERY_RESULT>;
 export type Message = MESSAGES_QUERY_RESULT[number];
-
-const NAME_KEY = "round-chat-name";
-const NAME_EVENT = "round-chat-name-change";
-
-function subscribeToName(onChange: () => void) {
-  window.addEventListener("storage", onChange);
-  window.addEventListener(NAME_EVENT, onChange);
-  return () => {
-    window.removeEventListener("storage", onChange);
-    window.removeEventListener(NAME_EVENT, onChange);
-  };
-}
-
-function readName() {
-  try {
-    return localStorage.getItem(NAME_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function saveName(name: string) {
-  try {
-    localStorage.setItem(NAME_KEY, name);
-  } catch {}
-  window.dispatchEvent(new Event(NAME_EVENT));
-}
 
 const noSubscription = () => () => {};
 
@@ -75,7 +49,7 @@ export function RoundRoom({
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
   const [pipError, setPipError] = useState<string | null>(null);
   const stopwatch = useStopwatch();
-  const author = useSyncExternalStore(subscribeToName, readName, () => "");
+  const author = useChatName();
   const pipSupported = useSyncExternalStore(
     noSubscription,
     () => "documentPictureInPicture" in window,
@@ -139,7 +113,7 @@ export function RoundRoom({
       activeTab={activeTab}
       onTabChange={setSelectedTab}
       author={author}
-      onAuthorChange={saveName}
+      onAuthorChange={saveChatName}
       stopwatch={stopwatch}
       floating={pipWindow !== null}
     />

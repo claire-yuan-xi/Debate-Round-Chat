@@ -15,6 +15,23 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
+export type RoundReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "round";
+};
+
+export type RoundAccess = {
+  _id: string;
+  _type: "roundAccess";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  round?: RoundReference;
+  joinCode?: string;
+};
+
 export type Workflow = {
   _id: string;
   _type: "workflow";
@@ -39,13 +56,6 @@ export type Workflow = {
     _type: "workflowTransitionDef";
     _key: string;
   }>;
-};
-
-export type RoundReference = {
-  _ref: string;
-  _type: "reference";
-  _weak?: boolean;
-  [internalGroqTypeReferenceTo]?: "round";
 };
 
 export type Message = {
@@ -206,8 +216,9 @@ export type Slug = {
 };
 
 export type AllSanitySchemaTypes =
-  | Workflow
   | RoundReference
+  | RoundAccess
+  | Workflow
   | Message
   | Round
   | SanityImagePaletteSwatch
@@ -262,6 +273,11 @@ export type MESSAGES_QUERY_RESULT = Array<{
   speechKey: string | null;
 }>;
 
+// Source: ../web/src/sanity/queries.ts
+// Variable: ROUND_JOIN_CODE_QUERY
+// Query: *[_id == $accessId][0].joinCode
+export type ROUND_JOIN_CODE_QUERY_RESULT = string | null;
+
 // Query TypeMap
 declare global {
   interface SanityQueries {
@@ -269,6 +285,7 @@ declare global {
     '*[_type == "round" && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title\n    }': OPEN_ROUNDS_QUERY_RESULT;
     '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState, speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_QUERY_RESULT;
     '*[_type == "message" && round._ref == $id] | order(sentAt asc){ _id, author, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
+    "*[_id == $accessId][0].joinCode": ROUND_JOIN_CODE_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

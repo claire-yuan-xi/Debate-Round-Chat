@@ -17,6 +17,7 @@ import {
   type Actor,
   type WorkflowDefinition,
 } from '../../shared/workflow'
+import {generateJoinCode, roundAccessId} from '../../shared/joinCode'
 
 const client = getCliClient({apiVersion: '2026-09-22'})
 const actor: Actor = {type: 'agent', name: process.env.AGENT_NAME ?? 'Claude (agent)'}
@@ -38,14 +39,26 @@ async function draft(title: string, speechList = '') {
     .map((name) => name.trim())
     .filter(Boolean)
     .map((name) => ({_key: randomKey(), _type: 'speech', name}))
-  const doc = await client.create({
-    _type: 'round',
-    title,
-    speeches,
-    workflowState: def.initialState,
-    workflowHistory: [makeEvent('draft', null, def.initialState, actor)],
-  })
-  console.log(`Drafted round ${doc._id} (${def.initialState}). A person has to approve it.`)
+  const roundId = crypto.randomUUID()
+  // The round and its private join code are created together.
+  await client
+    .transaction()
+    .create({
+      _id: roundId,
+      _type: 'round',
+      title,
+      speeches,
+      workflowState: def.initialState,
+      workflowHistory: [makeEvent('draft', null, def.initialState, actor)],
+    })
+    .create({
+      _id: roundAccessId(roundId),
+      _type: 'roundAccess',
+      round: {_type: 'reference', _ref: roundId, _weak: true},
+      joinCode: generateJoinCode(),
+    })
+    .commit()
+  console.log(`Drafted round ${roundId} (${def.initialState}). A person has to approve it.`)
 }
 
 async function move(roundId: string, transitionId: string) {

@@ -2,6 +2,13 @@
 
 import { writeClient } from "@/sanity/write-client";
 import { ROUND_QUERY } from "@/sanity/queries";
+import {
+  codesMatch,
+  getJoinCode,
+  hasRoundAccess,
+  normalizeJoinCode,
+  rememberRoundAccess,
+} from "@/lib/round-access";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -12,10 +19,28 @@ async function getOpenRound(roundId: string) {
   if (!process.env.SANITY_API_WRITE_TOKEN) {
     return { error: "The server has no Sanity write token yet (SANITY_API_WRITE_TOKEN)." };
   }
+  if (!(await hasRoundAccess(roundId))) {
+    return { error: "Enter the round's join code again. It may have been changed." };
+  }
   const round = await writeClient.fetch(ROUND_QUERY, { id: roundId });
   if (!round) return { error: "That round no longer exists." };
   if (!round.chatOpen) return { error: `Chat is closed while the round is ${round.stateTitle ?? round.workflowState}.` };
   return { round };
+}
+
+export async function joinRound(roundId: string, code: string): Promise<Result> {
+  const given = normalizeJoinCode(code);
+  const expected = await getJoinCode(roundId);
+  if (!expected) {
+    return { ok: false, error: "This round has no join code yet. Open it in the Studio to create one." };
+  }
+  if (!codesMatch(given, expected)) {
+    // Slow down guessing.
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return { ok: false, error: "That code doesn't match this round." };
+  }
+  await rememberRoundAccess(roundId, expected);
+  return { ok: true };
 }
 
 export async function sendMessage(
