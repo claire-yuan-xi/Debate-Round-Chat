@@ -192,10 +192,34 @@ Taking the screenshots for this post turned up an empty grey bubble in the chat.
 - Round Control does the same.
 - The Studio no longer offers "create message", since messages should only come from the chat.
 
-### What worked, what didn't
+### Prompts that worked, and ones that didn't
 
-- **Worked:** short, specific constraints ("bare minimum: chat, stopwatch, speech subtabs"). Asking "what does this actually do?" before building. Letting the agent check its own work by running the Studio, the site and the CLI.
-- **Didn't:** vague UI reports ("there is none") took a round trip. Screenshots were much faster. Running commands in the terminal while the agent ran its own caused two collisions: the duplicate `create-next-app`, and an old Studio still holding port 3333.
+Quoted as I typed them, typos included.
+
+**Worked: asking before building.**
+> without doing what the prompt says, just answer: do you think in this chat i can have u do this prompt from the dev-challenge sanity challenge with the stuff we have set up here? im not sure what this stuff i just set up and did actually does, so provide context on that as well.
+
+I got a plain-English tour of what I'd set up (Studio vs. website vs. TypeGen), a "yes, and here's how" for the challenge, and the Picture-in-Picture idea, all before any code was written.
+
+**Worked: tight scope, spelled out.**
+> use document picture in picture, and it can have that extra functionality u mention but actually keep the number of functions to a bare minimum; just the ability to chat with the partner during the round, maybe a stop watch, and the ability to create subtabs so a message can be tied to a specific speech. […] now start building studio custommizations, an app sdk app and a workflow schema.
+
+This one prompt produced most of the project. Naming the three features kept the UI small, and naming the three Sanity areas pushed the depth into the content model.
+
+**Worked: short follow-ups with one clear goal.**
+> rename the round state to something clearer
+
+> yes commit it, then add the join code
+
+**Didn't work at first: describing the UI in words.**
+> where is the move round button within the studio, there is none
+
+> wheres the pop out chat
+
+The first needed the agent to open the Studio itself and dig into Studio v6's source to find where the button went. The second was a mix-up: I was looking in the Studio, and the chat lives on the website. Sending a **screenshot** settled it in one reply. Next time I'd send the screenshot first.
+
+**Didn't work: running my own commands alongside the agent's.**
+Running `create-next-app web` myself after the agent already had caused a conflict, and so did an old Studio server still holding port 3333. Clicking "Run" on a `git push` command four times opened four terminals, all waiting for a password. We eventually switched to an SSH key.
 
 <!-- TODO: add anything from your side — how it felt in an actual round, what your partner thought, what you'd build next. -->
 
