@@ -264,7 +264,7 @@ export type ROUND_QUERY_RESULT = {
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: MESSAGES_QUERY
-// Query: *[_type == "message" && round._ref == $id] | order(sentAt asc){ _id, author, body, sentAt, speechKey }
+// Query: *[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)] | order(sentAt asc){ _id, author, body, sentAt, speechKey }
 export type MESSAGES_QUERY_RESULT = Array<{
   _id: string;
   author: string | null;
@@ -284,7 +284,7 @@ declare global {
     '*[_id == "workflow-round"][0].states[chatOpen == true].id': CHAT_OPEN_STATES_QUERY_RESULT;
     '*[_type == "round" && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title\n    }': OPEN_ROUNDS_QUERY_RESULT;
     '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState, speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_QUERY_RESULT;
-    '*[_type == "message" && round._ref == $id] | order(sentAt asc){ _id, author, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
+    '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)] | order(sentAt asc){ _id, author, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
     "*[_id == $accessId][0].joinCode": ROUND_JOIN_CODE_QUERY_RESULT;
   }
 }
