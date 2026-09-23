@@ -13,7 +13,7 @@ interface Props {
 export function MessageFeed({ roundId, speeches }: Props) {
   const { data, hasMore, loadMore, isPending } = useDocuments({
     documentType: "message",
-    filter: "round._ref == $roundId",
+    filter: "round._ref == $roundId && defined(body) && defined(sentAt)",
     params: { roundId },
     batchSize: 100,
     orderings: [{ field: "sentAt", direction: "desc" }],

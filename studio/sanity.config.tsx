@@ -19,9 +19,10 @@ export default defineConfig({
 
   schema: {
     types: schemaTypes,
-    // The workflow is edited from the sidebar and access docs from their round, never created directly.
+    // Messages come from the chat, the workflow is edited from the sidebar, and access
+    // docs from their round, so none of them are created from "New document".
     templates: (templates) =>
-      templates.filter((t) => !['workflow', 'roundAccess'].includes(t.schemaType)),
+      templates.filter((t) => !['message', 'workflow', 'roundAccess'].includes(t.schemaType)),
   },
 
   form: {

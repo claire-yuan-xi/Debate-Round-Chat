@@ -1,7 +1,84 @@
-## My Build Process
+---
+title: Round Chat — a floating partner chat for debate rounds, with the round's workflow living in Sanity
+published: false
+tags: devchallenge, sanitychallenge, sanity, ai
+---
 
-<!-- Draft written with Claude from the session transcript. Edit into your own voice.
-     Things only you can add are marked TODO. -->
+*This is a submission for the [Sanity Challenge, Path Two: Vibe-Code Something Strange](https://dev.to/challenges/sanity-2026-09-16)*
+
+<!-- Draft written with Claude from the session transcript. Edit it into your own voice.
+     Things only you can add are marked TODO. Before publishing, make sure the GitHub repo
+     exists at the URL below, because the screenshots load from it. -->
+
+## What I Built
+
+**Round Chat** is a tiny chat window for debate partners that floats on top of every other window during a round. When you're flowing on one tab and reading evidence on another, you can still see what your partner just sent, without switching tabs.
+
+It does three things, on purpose:
+
+- **Chat with your partner**, split into **speech tabs** (1AC, CX, 1NC…), so a note about the 1AC stays with the 1AC. Tabs with unread messages get a red dot.
+- **A stopwatch** in the header.
+- **Pop out.** One click puts the chat in an always-on-top window, using Chrome's Document Picture-in-Picture API.
+
+Everything else is in the content model, not the UI:
+
+- **The round's life is a workflow stored as data.** Draft → Ready → In round → Finished. An AI agent can draft a round, but only a person can approve it. The chat only opens in states the workflow marks as `chatOpen`.
+- **Each round has a private join code**, so strangers can't post, even though the dataset is public.
+- **Round Control**, an App SDK app, shows every round, its workflow history and its messages in real time.
+
+It's for me and my debate partner. <!-- TODO: a sentence about your event/format and why you wanted this. -->
+
+## Demo
+
+**Live site:** https://debate-round-chat.vercel.app. You'll need a round's join code to get into a chat.
+
+<!-- TODO: embed your screen recording here (YouTube/Loom link, or upload an .mp4). -->
+
+The chat at the size of the pop-out window. The red dot on **1AC** means my partner posted there and I haven't looked yet:
+
+![The chat at pop-out size, with a stopwatch running and an unread dot on the 1AC tab](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/03-floating-chat-size.png)
+
+Each speech tab keeps its own thread:
+
+![The 1AC tab showing a partner's note about the plan text](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/05-speech-tab.png)
+
+Joining a round takes a name and the round's join code:
+
+![Join screen with name and join code fields](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/02-join.png)
+
+Only rounds the workflow has opened for chat are listed:
+
+![Home page listing the practice round, which is In round](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/01-home.png)
+
+<!-- TODO: add your own screenshots (Cmd+Shift+4, then Space to capture a window), saved into docs/screenshots/:
+     06-popout.png        the pop-out chat floating over another app or tab
+     07-studio-round.png  a round in the Studio: join code panel + Workflow state buttons
+     08-studio-sidebar.png  Rounds → Draft / Ready / In round / Finished
+     09-round-control.png Round Control with the history timeline and messages
+     Then add them like the images above. -->
+
+And the moment I like best. The agent drafts a round, then tries to approve it:
+
+```
+$ npm run agent -- draft "Practice round – Aff vs. Lincoln" "1AC,CX,1NC,CX,2AC"
+Drafted round TlUHV76Gcte6LRyCkk0Cig (draft). A person has to approve it.
+
+$ npm run agent -- move TlUHV76Gcte6LRyCkk0Cig approve
+"Approve setup" can't be done by an agent.
+```
+
+## Code
+
+{% github Clairee-y/debate-round-chat %}
+
+| Folder | What's in it |
+|---|---|
+| [`studio/`](https://github.com/Clairee-y/debate-round-chat/tree/main/studio) | Sanity Studio: schemas, the sidebar built from the workflow, the Move round action and in-form workflow buttons, the join code panel, and `scripts/agent.ts` |
+| [`app/`](https://github.com/Clairee-y/debate-round-chat/tree/main/app) | Round Control, an App SDK app |
+| [`web/`](https://github.com/Clairee-y/debate-round-chat/tree/main/web) | The Next.js 16 chat, with the pop-out window, live updates, server actions and join code checks |
+| [`shared/`](https://github.com/Clairee-y/debate-round-chat/tree/main/shared) | The workflow engine and join code helpers used by the Studio, the app and the agent |
+
+## My Build Process
 
 **Tool:** Claude Code in the Claude desktop app (Code tab), running Claude Opus 5.5, with the `sanity-best-practices` agent skill. Everything below happened in one long session, and the transcript is embedded further down.
 
@@ -98,14 +175,22 @@ Things that went wrong here:
 
 While checking on my Vercel login, the agent read my terminal, and my Sanity write token from earlier was still on screen. It told me right away that the token was now in the transcript. I created a new token, added it to Vercel as a Secret, and deleted the old one. The agent then checked with a dry-run write that the new token works and the old one is rejected (401). The token in the embedded transcript below is dead.
 
-The agent also wouldn't do a few things itself, even when I asked:
+The agent also left a few things to me on purpose:
 
 - Deleting my old test document: it gave me the command to run.
 - Entering tokens into Vercel.
 - Logging in for me.
-- Clicking "Approve" on my behalf. The workflow says a person approves, so it would have been logged under my name.
+- Clicking "Approve" while it was testing in the Studio. The workflow says a person approves, and the click would have been logged under my name.
 
-I found that annoying in the moment, but it's the right call for a tool that can act on your accounts.
+It slowed things down a little, but it's the right call for a tool that can act on your accounts.
+
+### 11. A bug the screenshots caught
+
+Taking the screenshots for this post turned up an empty grey bubble in the chat. It was a real `message` document with no author, text or time. It had been created from the Studio's "New document" button, and because messages save instantly, an empty one was saved on the spot. The fix had three parts:
+
+- The website skips messages without text or a send time.
+- Round Control does the same.
+- The Studio no longer offers "create message", since messages should only come from the chat.
 
 ### What worked, what didn't
 
@@ -113,3 +198,27 @@ I found that annoying in the moment, but it's the right call for a tool that can
 - **Didn't:** vague UI reports ("there is none") took a round trip. Screenshots were much faster. Running commands in the terminal while the agent ran its own caused two collisions: the duplicate `create-next-app`, and an old Studio still holding port 3333.
 
 <!-- TODO: add anything from your side — how it felt in an actual round, what your partner thought, what you'd build next. -->
+
+## Sanity Project Details
+
+- **Project ID:** `jelfmjhs`
+- **Dataset:** `production` (public)
+- **Studio:** https://debate-round-chat.sanity.studio
+
+You can read the content model straight from the public API:
+
+- [The round workflow document](https://jelfmjhs.api.sanity.io/v2026-09-22/data/query/production?query=*%5B_id%20%3D%3D%20%22workflow-round%22%5D%5B0%5D%7Btitle%2C%20initialState%2C%20states%5B%5D%7Bid%2C%20title%2C%20chatOpen%7D%2C%20transitions%5B%5D%7Bid%2C%20title%2C%20from%2C%20to%2C%20actors%7D%7D): its states, transitions and who is allowed to take each one.
+- [Rounds with their speech tabs and workflow history](https://jelfmjhs.api.sanity.io/v2026-09-22/data/query/production?query=*%5B_type%20%3D%3D%20%22round%22%5D%7Btitle%2C%20workflowState%2C%20speeches%5B%5D%7Bname%7D%2C%20workflowHistory%5B%5D%7Btransition%2C%20actorType%2C%20at%7D%7D), including which transitions an agent made and which a person made.
+
+| Type | Role |
+|---|---|
+| `round` | Live-edit. Title, speech tabs, `workflowState` and `workflowHistory` |
+| `message` | Live-edit. Reference to its round, `speechKey`, author, body, `sentAt` |
+| `workflow` | Singleton `workflow-round`: states (with `chatOpen`), `initialState`, and transitions with allowed actors |
+| `roundAccess` | Private `roundAccess.<roundId>` document holding the join code. Not visible to anonymous readers |
+
+## Agent Session
+
+<!-- TODO: upload the transcript at https://dev.to/agent_sessions/new, slice it to the good parts, click Make Public, then embed it here.
+     The Sanity token that appears in the transcript was revoked and replaced, and the agent confirmed the old one is rejected (401).
+     Also check the transcript for anything else you don't want public, like your email address. -->

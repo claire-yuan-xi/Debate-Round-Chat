@@ -21,7 +21,7 @@ export const ROUND_QUERY = defineQuery(
 );
 
 export const MESSAGES_QUERY = defineQuery(
-  `*[_type == "message" && round._ref == $id] | order(sentAt asc){ _id, author, body, sentAt, speechKey }`
+  `*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)] | order(sentAt asc){ _id, author, body, sentAt, speechKey }`
 );
 
 // Only readable with a token: the access document's ID contains a dot.
