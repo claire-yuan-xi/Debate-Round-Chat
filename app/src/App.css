@@ -1,0 +1,181 @@
+:root {
+  --bg: #fafafa;
+  --panel: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b6b6b;
+  --border: #e3e3e3;
+  --accent: #2c5cdd;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111;
+    --panel: #1b1b1b;
+    --text: #eee;
+    --muted: #9a9a9a;
+    --border: #2e2e2e;
+    --accent: #7ea0ff;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  background: var(--panel);
+}
+
+.sidebar h1 {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.detail {
+  padding: 24px;
+  max-width: 760px;
+}
+
+.muted,
+.loading {
+  color: var(--muted);
+}
+
+.error {
+  color: #c62828;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.round-list,
+.messages,
+.history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.round-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.round-item.selected {
+  border-color: var(--accent);
+}
+
+.state,
+.actor,
+.tab {
+  font-size: 12px;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--border);
+  white-space: nowrap;
+}
+
+.state-draft {
+  background: #fff1c2;
+  color: #6b4f00;
+}
+
+.state-ready {
+  background: #dbe6ff;
+  color: #1f3f99;
+}
+
+.state-live {
+  background: #d4f5dd;
+  color: #11632a;
+}
+
+.actor-agent {
+  background: #eadcff;
+  color: #4b2596;
+}
+
+.round-detail header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.round-detail h2 {
+  margin: 0;
+}
+
+.round-detail section {
+  margin-top: 24px;
+}
+
+.workflow-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.history li {
+  font-size: 14px;
+  padding: 4px 0;
+  color: var(--muted);
+}
+
+.history strong {
+  color: var(--text);
+}
+
+.message {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.message-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.message-meta time {
+  color: var(--muted);
+  margin-left: auto;
+}
+
+.message p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
