@@ -36,19 +36,19 @@ It's for me and my debate partner. <!-- TODO: a sentence about your event/format
 
 The chat at the size of the pop-out window. The red dot on **1AC** means my partner posted there and I haven't looked yet:
 
-![The chat at pop-out size, with a stopwatch running and an unread dot on the 1AC tab](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/03-floating-chat-size.png)
+![The chat at pop-out size, with a stopwatch running and an unread dot on the 1AC tab](https://raw.githubusercontent.com/claire-yuan-xi/debate-round-chat/main/docs/screenshots/03-floating-chat-size.png)
 
 Each speech tab keeps its own thread:
 
-![The 1AC tab showing a partner's note about the plan text](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/05-speech-tab.png)
+![The 1AC tab showing a partner's note about the plan text](https://raw.githubusercontent.com/claire-yuan-xi/debate-round-chat/main/docs/screenshots/05-speech-tab.png)
 
 Joining a round takes a name and the round's join code:
 
-![Join screen with name and join code fields](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/02-join.png)
+![Join screen with name and join code fields](https://raw.githubusercontent.com/claire-yuan-xi/debate-round-chat/main/docs/screenshots/02-join.png)
 
 Only rounds the workflow has opened for chat are listed:
 
-![Home page listing the practice round, which is In round](https://raw.githubusercontent.com/Clairee-y/debate-round-chat/main/docs/screenshots/01-home.png)
+![Home page listing the practice round, which is In round](https://raw.githubusercontent.com/claire-yuan-xi/debate-round-chat/main/docs/screenshots/01-home.png)
 
 <!-- TODO: add your own screenshots (Cmd+Shift+4, then Space to capture a window), saved into docs/screenshots/:
      06-popout.png        the pop-out chat floating over another app or tab
@@ -69,14 +69,14 @@ $ npm run agent -- move TlUHV76Gcte6LRyCkk0Cig approve
 
 ## Code
 
-{% github Clairee-y/debate-round-chat %}
+{% github claire-yuan-xi/debate-round-chat %}
 
 | Folder | What's in it |
 |---|---|
-| [`studio/`](https://github.com/Clairee-y/debate-round-chat/tree/main/studio) | Sanity Studio: schemas, the sidebar built from the workflow, the Move round action and in-form workflow buttons, the join code panel, and `scripts/agent.ts` |
-| [`app/`](https://github.com/Clairee-y/debate-round-chat/tree/main/app) | Round Control, an App SDK app |
-| [`web/`](https://github.com/Clairee-y/debate-round-chat/tree/main/web) | The Next.js 16 chat, with the pop-out window, live updates, server actions and join code checks |
-| [`shared/`](https://github.com/Clairee-y/debate-round-chat/tree/main/shared) | The workflow engine and join code helpers used by the Studio, the app and the agent |
+| [`studio/`](https://github.com/claire-yuan-xi/debate-round-chat/tree/main/studio) | Sanity Studio: schemas, the sidebar built from the workflow, the Move round action and in-form workflow buttons, the join code panel, and `scripts/agent.ts` |
+| [`app/`](https://github.com/claire-yuan-xi/debate-round-chat/tree/main/app) | Round Control, an App SDK app |
+| [`web/`](https://github.com/claire-yuan-xi/debate-round-chat/tree/main/web) | The Next.js 16 chat, with the pop-out window, live updates, server actions and join code checks |
+| [`shared/`](https://github.com/claire-yuan-xi/debate-round-chat/tree/main/shared) | The workflow engine and join code helpers used by the Studio, the app and the agent |
 
 ## My Build Process
 
