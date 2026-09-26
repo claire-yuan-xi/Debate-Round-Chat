@@ -1,6 +1,8 @@
+import {loginToken} from './loginToken'
+import {member} from './member'
 import {message} from './message'
 import {round} from './round'
-import {roundAccess} from './roundAccess'
+import {team} from './team'
 import {workflow} from './workflow'
 
-export const schemaTypes = [round, message, workflow, roundAccess]
+export const schemaTypes = [team, member, round, message, workflow, loginToken]

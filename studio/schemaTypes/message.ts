@@ -21,7 +21,18 @@ export const message = defineType({
       description: 'The _key of the speech in the round. Empty means the General tab.',
       type: 'string',
     }),
-    defineField({name: 'author', type: 'string', validation: (rule) => rule.required()}),
+    defineField({
+      name: 'author',
+      type: 'reference',
+      to: [{type: 'member'}],
+      weak: true,
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'authorName',
+      description: "The author's name when they sent it.",
+      type: 'string',
+    }),
     defineField({
       name: 'body',
       type: 'text',
@@ -34,7 +45,7 @@ export const message = defineType({
     {title: 'Sent, newest first', name: 'sentAtDesc', by: [{field: 'sentAt', direction: 'desc'}]},
   ],
   preview: {
-    select: {author: 'author', body: 'body', round: 'round.title'},
+    select: {author: 'authorName', body: 'body', round: 'round.title'},
     prepare: ({author, body, round}) => ({title: `${author}: ${body}`, subtitle: round}),
   },
 })

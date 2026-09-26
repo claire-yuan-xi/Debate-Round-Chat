@@ -2,6 +2,8 @@ import type {StructureResolver} from 'sanity/structure'
 import {CommentIcon} from '@sanity/icons/Comment'
 import {MicrophoneIcon} from '@sanity/icons/Microphone'
 import {TransferIcon} from '@sanity/icons/Transfer'
+import {UserIcon} from '@sanity/icons/User'
+import {UsersIcon} from '@sanity/icons/Users'
 import {ROUND_WORKFLOW_ID, type WorkflowDefinition} from '../shared/workflow'
 
 export const structure: StructureResolver = (S, context) =>
@@ -36,6 +38,9 @@ export const structure: StructureResolver = (S, context) =>
             ])
         }),
       S.documentTypeListItem('message').title('Messages').icon(CommentIcon),
+      S.divider(),
+      S.documentTypeListItem('team').title('Teams').icon(UsersIcon),
+      S.documentTypeListItem('member').title('Members').icon(UserIcon),
       S.divider(),
       S.listItem()
         .title('Round workflow')

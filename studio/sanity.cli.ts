@@ -3,7 +3,7 @@ import {defineCliConfig} from 'sanity/cli'
 export default defineCliConfig({
   api: {
     projectId: 'jelfmjhs',
-    dataset: 'production',
+    dataset: 'team',
   },
   typegen: {
     enabled: true,

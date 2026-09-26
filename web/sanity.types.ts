@@ -15,21 +15,16 @@
 export declare const internalGroqTypeReferenceTo: unique symbol;
 
 // Source: schema.json
-export type RoundReference = {
-  _ref: string;
-  _type: "reference";
-  _weak?: boolean;
-  [internalGroqTypeReferenceTo]?: "round";
-};
-
-export type RoundAccess = {
+export type LoginToken = {
   _id: string;
-  _type: "roundAccess";
+  _type: "loginToken";
   _createdAt: string;
   _updatedAt: string;
   _rev: string;
-  round?: RoundReference;
-  joinCode?: string;
+  email?: string;
+  tokenHash?: string;
+  expiresAt?: string;
+  next?: string;
 };
 
 export type Workflow = {
@@ -58,6 +53,20 @@ export type Workflow = {
   }>;
 };
 
+export type RoundReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "round";
+};
+
+export type MemberReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "member";
+};
+
 export type Message = {
   _id: string;
   _type: "message";
@@ -66,9 +75,17 @@ export type Message = {
   _rev: string;
   round?: RoundReference;
   speechKey?: string;
-  author?: string;
+  author?: MemberReference;
+  authorName?: string;
   body?: string;
   sentAt?: string;
+};
+
+export type TeamReference = {
+  _ref: string;
+  _type: "reference";
+  _weak?: boolean;
+  [internalGroqTypeReferenceTo]?: "team";
 };
 
 export type Round = {
@@ -78,6 +95,12 @@ export type Round = {
   _updatedAt: string;
   _rev: string;
   title?: string;
+  team?: TeamReference;
+  participants?: Array<
+    {
+      _key: string;
+    } & MemberReference
+  >;
   workflowState?: string;
   speeches?: Array<{
     name?: string;
@@ -94,6 +117,31 @@ export type Round = {
     _type: "workflowEvent";
     _key: string;
   }>;
+};
+
+export type Member = {
+  _id: string;
+  _type: "member";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  name?: string;
+  email?: string;
+};
+
+export type Team = {
+  _id: string;
+  _type: "team";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  name?: string;
+  members?: Array<
+    {
+      _key: string;
+    } & MemberReference
+  >;
+  inviteCode?: string;
 };
 
 export type SanityImagePaletteSwatch = {
@@ -216,11 +264,15 @@ export type Slug = {
 };
 
 export type AllSanitySchemaTypes =
-  | RoundReference
-  | RoundAccess
+  | LoginToken
   | Workflow
+  | RoundReference
+  | MemberReference
   | Message
+  | TeamReference
   | Round
+  | Member
+  | Team
   | SanityImagePaletteSwatch
   | SanityImagePalette
   | SanityImageDimensions
@@ -234,22 +286,102 @@ export type AllSanitySchemaTypes =
   | Slug;
 
 // Source: ../web/src/sanity/queries.ts
-// Variable: CHAT_OPEN_STATES_QUERY
-// Query: *[_id == "workflow-round"][0].states[chatOpen == true].id
-export type CHAT_OPEN_STATES_QUERY_RESULT = Array<string | null> | null;
+// Variable: WORKFLOW_QUERY
+// Query: *[_id == "workflow-round"][0]{ initialState, states, transitions }
+export type WORKFLOW_QUERY_RESULT =
+  | {
+      initialState: null;
+      states: null;
+      transitions: null;
+    }
+  | {
+      initialState: string | null;
+      states: Array<{
+        id?: string;
+        title?: string;
+        chatOpen?: boolean;
+        _type: "workflowStateDef";
+        _key: string;
+      }> | null;
+      transitions: Array<{
+        id?: string;
+        title?: string;
+        from?: string;
+        to?: string;
+        actors?: Array<string>;
+        _type: "workflowTransitionDef";
+        _key: string;
+      }> | null;
+    }
+  | null;
 
 // Source: ../web/src/sanity/queries.ts
-// Variable: OPEN_ROUNDS_QUERY
-// Query: *[_type == "round" && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]    | order(_updatedAt desc){      _id, title,      "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title    }
-export type OPEN_ROUNDS_QUERY_RESULT = Array<{
+// Variable: MEMBER_QUERY
+// Query: *[_type == "member" && _id == $id][0]{ _id, name, email }
+export type MEMBER_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+  email: string | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: MEMBER_BY_EMAIL_QUERY
+// Query: *[_type == "member" && email == $email][0]{ _id, name }
+export type MEMBER_BY_EMAIL_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: LOGIN_TOKEN_QUERY
+// Query: *[_type == "loginToken" && tokenHash == $tokenHash][0]{ _id, email, expiresAt, next }
+export type LOGIN_TOKEN_QUERY_RESULT = {
+  _id: string;
+  email: string | null;
+  expiresAt: string | null;
+  next: string | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: RECENT_LOGIN_TOKENS_QUERY
+// Query: count(*[_type == "loginToken" && email == $email && _createdAt > $since])
+export type RECENT_LOGIN_TOKENS_QUERY_RESULT = number;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: MY_TEAMS_QUERY
+// Query: *[_type == "team" && $memberId in members[]._ref] | order(name asc){    _id, name, inviteCode,    "members": members[]->{ _id, name }  }
+export type MY_TEAMS_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  inviteCode: string | null;
+  members: Array<{
+    _id: string;
+    name: string | null;
+  }> | null;
+}>;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: TEAM_BY_INVITE_QUERY
+// Query: *[_type == "team" && inviteCode == $code][0]{ _id, name, "memberCount": count(members) }
+export type TEAM_BY_INVITE_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+  memberCount: number | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: MY_OPEN_ROUNDS_QUERY
+// Query: *[_type == "round" && $memberId in participants[]._ref    && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]    | order(_updatedAt desc){      _id, title,      "team": team->name,      "participants": participants[]->name    }
+export type MY_OPEN_ROUNDS_QUERY_RESULT = Array<{
   _id: string;
   title: string | null;
-  stateTitle: string | null;
+  team: string | null;
+  participants: Array<string | null> | null;
 }>;
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: ROUND_QUERY
-// Query: *[_type == "round" && _id == $id][0]{    _id, title, workflowState, speeches[]{ _key, name },    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  }
+// Query: *[_type == "round" && _id == $id][0]{    _id, title, workflowState,    speeches[]{ _key, name },    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id,    "participants": participants[]->{ _id, name },    "team": team->{ _id, name, "members": members[]->{ _id, name } }  }
 export type ROUND_QUERY_RESULT = {
   _id: string;
   title: string | null;
@@ -260,32 +392,60 @@ export type ROUND_QUERY_RESULT = {
   }> | null;
   stateTitle: string | null;
   chatOpen: boolean | false | true | null;
+  participants: Array<{
+    _id: string;
+    name: string | null;
+  }> | null;
+  team: {
+    _id: string;
+    name: string | null;
+    members: Array<{
+      _id: string;
+      name: string | null;
+    }> | null;
+  } | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: ROUND_ACCESS_QUERY
+// Query: *[_type == "round" && _id == $id][0]{    _id, _rev, workflowState,    "isParticipant": $memberId in participants[]._ref,    "teamId": team._ref,    "teamMemberIds": team->members[]._ref,    "speechKeys": speeches[]._key,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  }
+export type ROUND_ACCESS_QUERY_RESULT = {
+  _id: string;
+  _rev: string;
+  workflowState: string | null;
+  isParticipant: boolean | null;
+  teamId: string | null;
+  teamMemberIds: Array<string> | null;
+  speechKeys: Array<string> | null;
+  chatOpen: boolean | false | true | null;
 } | null;
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: MESSAGES_QUERY
-// Query: *[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)] | order(sentAt asc){ _id, author, body, sentAt, speechKey }
+// Query: *[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]    | order(sentAt asc){ _id, "authorId": author._ref, authorName, body, sentAt, speechKey }
 export type MESSAGES_QUERY_RESULT = Array<{
   _id: string;
-  author: string | null;
+  authorId: string | null;
+  authorName: string | null;
   body: string | null;
   sentAt: string | null;
   speechKey: string | null;
 }>;
 
-// Source: ../web/src/sanity/queries.ts
-// Variable: ROUND_JOIN_CODE_QUERY
-// Query: *[_id == $accessId][0].joinCode
-export type ROUND_JOIN_CODE_QUERY_RESULT = string | null;
-
 // Query TypeMap
 declare global {
   interface SanityQueries {
-    '*[_id == "workflow-round"][0].states[chatOpen == true].id': CHAT_OPEN_STATES_QUERY_RESULT;
-    '*[_type == "round" && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title\n    }': OPEN_ROUNDS_QUERY_RESULT;
-    '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState, speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_QUERY_RESULT;
-    '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)] | order(sentAt asc){ _id, author, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
-    "*[_id == $accessId][0].joinCode": ROUND_JOIN_CODE_QUERY_RESULT;
+    '*[_id == "workflow-round"][0]{ initialState, states, transitions }': WORKFLOW_QUERY_RESULT;
+    '*[_type == "member" && _id == $id][0]{ _id, name, email }': MEMBER_QUERY_RESULT;
+    '*[_type == "member" && email == $email][0]{ _id, name }': MEMBER_BY_EMAIL_QUERY_RESULT;
+    '*[_type == "loginToken" && tokenHash == $tokenHash][0]{ _id, email, expiresAt, next }': LOGIN_TOKEN_QUERY_RESULT;
+    'count(*[_type == "loginToken" && email == $email && _createdAt > $since])': RECENT_LOGIN_TOKENS_QUERY_RESULT;
+    '*[_type == "team" && $memberId in members[]._ref] | order(name asc){\n    _id, name, inviteCode,\n    "members": members[]->{ _id, name }\n  }': MY_TEAMS_QUERY_RESULT;
+    '*[_type == "team" && inviteCode == $code][0]{ _id, name, "memberCount": count(members) }': TEAM_BY_INVITE_QUERY_RESULT;
+    '*[_type == "round" && $memberId in participants[]._ref\n    && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "team": team->name,\n      "participants": participants[]->name\n    }': MY_OPEN_ROUNDS_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState,\n    speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id,\n    "participants": participants[]->{ _id, name },\n    "team": team->{ _id, name, "members": members[]->{ _id, name } }\n  }': ROUND_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    _id, _rev, workflowState,\n    "isParticipant": $memberId in participants[]._ref,\n    "teamId": team._ref,\n    "teamMemberIds": team->members[]._ref,\n    "speechKeys": speeches[]._key,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_ACCESS_QUERY_RESULT;
+    '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]\n    | order(sentAt asc){ _id, "authorId": author._ref, authorName, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

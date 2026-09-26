@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import type { MESSAGES_QUERY_RESULT, ROUND_QUERY_RESULT } from "../../sanity.types";
-import { browserClient } from "@/sanity/browser-client";
-import { MESSAGES_QUERY, ROUND_QUERY } from "@/sanity/queries";
+import { addParticipant, getRoundState, moveRound } from "@/app/actions/rounds";
+import { availableTransitions, stateTitle, type WorkflowDefinition } from "@shared/workflow";
 import { ChatPanel } from "./ChatPanel";
-import { saveChatName, useChatName } from "./chat-name";
 import { useStopwatch } from "./useStopwatch";
+import { muted, secondaryButton } from "./ui";
 
 export type Round = NonNullable<ROUND_QUERY_RESULT>;
 export type Message = MESSAGES_QUERY_RESULT[number];
+export interface Me {
+  _id: string;
+  name: string;
+}
 
 const noSubscription = () => () => {};
 
@@ -38,63 +42,64 @@ function copyStyles(target: Window) {
 export function RoundRoom({
   initialRound,
   initialMessages,
+  workflow,
+  me,
 }: {
   initialRound: Round;
   initialMessages: Message[];
+  workflow: WorkflowDefinition | null;
+  me: Me;
 }) {
   const roundId = initialRound._id;
   const [round, setRound] = useState<Round | null>(initialRound);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [selectedTab, setSelectedTab] = useState<string | null>(null);
   const [pipWindow, setPipWindow] = useState<Window | null>(null);
-  const [pipError, setPipError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const stopwatch = useStopwatch();
-  const author = useChatName();
   const pipSupported = useSyncExternalStore(
     noSubscription,
     () => "documentPictureInPicture" in window,
     () => false,
   );
 
-  // Live updates: refetch whenever the round or one of its messages changes.
+  // Live updates: the server pings on every change, and we refetch through a server action.
   useEffect(() => {
-    const params = { id: roundId };
-    const refetch = () =>
-      Promise.all([
-        browserClient.fetch(ROUND_QUERY, params),
-        browserClient.fetch(MESSAGES_QUERY, params),
-      ]).then(([nextRound, nextMessages]) => {
-        setRound(nextRound);
-        setMessages(nextMessages);
-      });
-
-    const subscription = browserClient
-      .listen(
-        `*[(_type == "message" && round._ref == $id) || _id == $id || _id == "workflow-round"]`,
-        params,
-        { includeResult: false, visibility: "query", events: ["welcome", "mutation", "reconnect"] },
-      )
-      .subscribe({
-        next: (event) => {
-          if (event.type === "mutation" || event.type === "reconnect") refetch();
-        },
-        error: (err) => console.error("Live updates stopped", err),
-      });
-    return () => subscription.unsubscribe();
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const state = await getRoundState(roundId);
+        if (cancelled) return;
+        setRound(state?.round ?? null);
+        if (state) setMessages(state.messages);
+      }, 100);
+    };
+    const source = new EventSource(`/api/rounds/${roundId}/events`);
+    // "ready" arrives on every (re)connect, so anything missed while offline is caught up.
+    source.addEventListener("ready", refresh);
+    source.addEventListener("change", refresh);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      source.close();
+    };
   }, [roundId]);
 
-  // If the selected speech tab gets removed, fall back to General.
+  // If the selected tab gets removed, fall back to General.
   const activeTab = round?.speeches?.some((s) => s._key === selectedTab) ? selectedTab : null;
 
   async function popOut() {
     const pip = window.documentPictureInPicture;
     if (!pip) return;
-    setPipError(null);
+    setError(null);
     let win: Window;
     try {
       win = await pip.requestWindow({ width: 380, height: 560 });
     } catch {
-      setPipError("This browser wouldn't open a floating window. Try desktop Chrome.");
+      setError("This browser wouldn't open a floating window. Try desktop Chrome.");
       return;
     }
     copyStyles(win);
@@ -102,9 +107,30 @@ export function RoundRoom({
     setPipWindow(win);
   }
 
-  if (!round) {
-    return <p className="p-8 text-zinc-600">This round was deleted.</p>;
+  function run(action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
+    setError(null);
+    startTransition(async () => {
+      const result = await action();
+      if (!result.ok) setError(result.error);
+    });
   }
+
+  if (!round) {
+    return (
+      <main className="mx-auto flex max-w-md flex-col gap-3 px-4 py-16">
+        <p>This round is gone, or you&apos;re no longer in it.</p>
+        <Link href="/" className="underline">
+          Back to your rounds
+        </Link>
+      </main>
+    );
+  }
+
+  const participants = (round.participants ?? []).filter((p) => p !== null);
+  const addable = (round.team?.members ?? []).filter(
+    (m): m is { _id: string; name: string | null } => Boolean(m && !participants.some((p) => p._id === m._id)),
+  );
+  const moves = availableTransitions(workflow, round.workflowState, "person");
 
   const panel = (
     <ChatPanel
@@ -112,43 +138,74 @@ export function RoundRoom({
       messages={messages}
       activeTab={activeTab}
       onTabChange={setSelectedTab}
-      author={author}
-      onAuthorChange={saveChatName}
+      me={me}
       stopwatch={stopwatch}
       floating={pipWindow !== null}
     />
   );
 
   return (
-    <main className="mx-auto flex h-dvh w-full max-w-2xl flex-col px-4 py-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <Link href="/" className="text-sm text-zinc-600 hover:underline dark:text-zinc-400">
+    <main className="mx-auto flex h-dvh w-full max-w-2xl flex-col gap-3 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link href="/" className={`text-sm hover:underline ${muted}`}>
           ← Rounds
         </Link>
-        {pipWindow ? (
-          <button
-            onClick={() => pipWindow.close()}
-            className="rounded-full border border-black/15 px-3 py-1 text-sm dark:border-white/20"
+        <div className="flex items-center gap-2">
+          {moves.map((move) => (
+            <button
+              key={move._key}
+              disabled={pending}
+              onClick={() => run(() => moveRound(roundId, move.id))}
+              className={secondaryButton}
+              title={`Moves the round to ${stateTitle(workflow, move.to)}`}
+            >
+              {move.title}
+            </button>
+          ))}
+          {pipWindow ? (
+            <button onClick={() => pipWindow.close()} className={secondaryButton}>
+              Bring chat back
+            </button>
+          ) : pipSupported ? (
+            <button
+              onClick={popOut}
+              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              Pop out chat
+            </button>
+          ) : (
+            <span className="text-xs text-zinc-500">Pop-out needs desktop Chrome or Edge</span>
+          )}
+        </div>
+      </div>
+
+      <div className={`flex flex-wrap items-center gap-2 text-sm ${muted}`}>
+        <span>
+          In this round: {participants.map((p) => (p._id === me._id ? "you" : (p.name ?? "New member"))).join(", ")}
+        </span>
+        {addable.length > 0 && (
+          <select
+            value=""
+            disabled={pending}
+            onChange={(e) => e.target.value && run(() => addParticipant(roundId, e.target.value))}
+            className="rounded-md border border-black/15 bg-transparent px-2 py-0.5 dark:border-white/20"
+            aria-label="Add a teammate to this round"
           >
-            Bring chat back
-          </button>
-        ) : pipSupported ? (
-          <button
-            onClick={popOut}
-            className="rounded-full bg-zinc-900 px-3 py-1 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            Pop out chat
-          </button>
-        ) : (
-          <span className="text-xs text-zinc-500">Pop-out needs desktop Chrome or Edge</span>
+            <option value="">+ Add teammate</option>
+            {addable.map((m) => (
+              <option key={m._id} value={m._id}>
+                {m.name ?? "New member"}
+              </option>
+            ))}
+          </select>
         )}
       </div>
-      {pipError && <p className="mb-2 text-sm text-red-600">{pipError}</p>}
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
       {pipWindow ? (
         <>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            The chat is floating in its own window. Keep this tab open.
-          </p>
+          <p className={muted}>The chat is floating in its own window. Keep this tab open.</p>
           {createPortal(panel, pipWindow.document.body)}
         </>
       ) : (

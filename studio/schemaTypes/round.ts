@@ -14,8 +14,21 @@ export const round = defineType({
     defineField({
       name: 'title',
       type: 'string',
-      description: 'For example "Round 3 – Aff vs. Lincoln".',
+      description: 'For example "Round 3 – Pro vs. Lincoln".',
       validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'team',
+      type: 'reference',
+      to: [{type: 'team'}],
+      weak: true,
+      validation: (rule) => rule.required(),
+    }),
+    defineField({
+      name: 'participants',
+      description: 'Only these teammates can see the round. Anyone in it can add more.',
+      type: 'array',
+      of: [defineArrayMember({type: 'reference', to: [{type: 'member'}], weak: true})],
     }),
     defineField({
       name: 'workflowState',
@@ -84,7 +97,7 @@ export const round = defineType({
     const initialState = await client.fetch<string | null>(`*[_id == $id][0].initialState`, {
       id: ROUND_WORKFLOW_ID,
     })
-    return {workflowState: initialState ?? 'draft', speeches: []}
+    return {workflowState: initialState ?? 'live', speeches: [], participants: []}
   },
   preview: {
     select: {title: 'title', state: 'workflowState'},

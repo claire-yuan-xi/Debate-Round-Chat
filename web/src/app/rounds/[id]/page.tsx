@@ -1,18 +1,29 @@
 import { notFound } from "next/navigation";
 import { client } from "@/sanity/client";
-import { MESSAGES_QUERY, ROUND_QUERY } from "@/sanity/queries";
-import { hasRoundAccess } from "@/lib/round-access";
-import { JoinRound } from "@/components/JoinRound";
+import { MESSAGES_QUERY, ROUND_QUERY, WORKFLOW_QUERY } from "@/sanity/queries";
+import { getRoundAccess, requireMember } from "@/lib/dal";
 import { RoundRoom } from "@/components/RoundRoom";
+import type { WorkflowDefinition } from "@shared/workflow";
 
 export default async function RoundPage({ params }: PageProps<"/rounds/[id]">) {
   const { id } = await params;
-  const fresh = client.withConfig({ useCdn: false });
-  const round = await fresh.fetch(ROUND_QUERY, { id }, { cache: "no-store" });
+  const member = await requireMember(`/rounds/${id}`);
+  // Rounds you're not in look the same as rounds that don't exist.
+  if (!(await getRoundAccess(id, member._id))) notFound();
 
+  const [round, messages, workflow] = await Promise.all([
+    client.fetch(ROUND_QUERY, { id }),
+    client.fetch(MESSAGES_QUERY, { id }),
+    client.fetch(WORKFLOW_QUERY),
+  ]);
   if (!round) notFound();
-  if (!(await hasRoundAccess(id))) return <JoinRound roundId={id} title={round.title} />;
 
-  const messages = await fresh.fetch(MESSAGES_QUERY, { id }, { cache: "no-store" });
-  return <RoundRoom initialRound={round} initialMessages={messages} />;
+  return (
+    <RoundRoom
+      initialRound={round}
+      initialMessages={messages}
+      workflow={workflow as WorkflowDefinition | null}
+      me={{ _id: member._id, name: member.name ?? "" }}
+    />
+  );
 }

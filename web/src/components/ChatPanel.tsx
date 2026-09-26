@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
-import { addSpeechTab, sendMessage } from "@/app/rounds/[id]/actions";
-import type { Message, Round } from "./RoundRoom";
+import { addSpeechTab, sendMessage } from "@/app/actions/rounds";
+import type { Me, Message, Round } from "./RoundRoom";
 import { formatElapsed, type Stopwatch } from "./useStopwatch";
 
 interface Props {
@@ -10,8 +10,7 @@ interface Props {
   messages: Message[];
   activeTab: string | null;
   onTabChange: (key: string | null) => void;
-  author: string;
-  onAuthorChange: (name: string) => void;
+  me: Me;
   stopwatch: Stopwatch;
   floating: boolean;
 }
@@ -21,8 +20,7 @@ export function ChatPanel({
   messages,
   activeTab,
   onTabChange,
-  author,
-  onAuthorChange,
+  me,
   stopwatch,
   floating,
 }: Props) {
@@ -59,7 +57,7 @@ export function ChatPanel({
     messages.some(
       (m) =>
         tabKey(m.speechKey) === tabKey(key) &&
-        m.author !== author &&
+        m.authorId !== me._id &&
         (m.sentAt ?? "") > (lastSeen[tabKey(key)] ?? ""),
     );
 
@@ -76,7 +74,7 @@ export function ChatPanel({
     e?.preventDefault();
     if (!draft.trim() || pending) return;
     const body = draft;
-    run(() => sendMessage(round._id, activeTab, author, body), () => setDraft(""));
+    run(() => sendMessage(round._id, activeTab, body), () => setDraft(""));
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -89,8 +87,6 @@ export function ChatPanel({
     const name = newTab;
     run(() => addSpeechTab(round._id, name), () => setNewTab(null));
   }
-
-  if (!author) return <NamePrompt onSave={onAuthorChange} />;
 
   return (
     <div className="flex h-full flex-col bg-white text-sm text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -140,7 +136,7 @@ export function ChatPanel({
                 value={newTab}
                 onChange={(e) => setNewTab(e.target.value)}
                 onBlur={submitTab}
-                placeholder="e.g. 1AR"
+                placeholder="e.g. Summary"
                 maxLength={40}
                 className="w-24 rounded-full border border-black/15 bg-transparent px-3 py-1 dark:border-white/20"
               />
@@ -151,11 +147,11 @@ export function ChatPanel({
       <ol ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-2">
         {visible.length === 0 && <li className="text-zinc-500">No messages in this tab yet.</li>}
         {visible.map((m) => {
-          const mine = m.author === author;
+          const mine = m.authorId === me._id;
           return (
             <li key={m._id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
               <span className="text-xs text-zinc-500">
-                {mine ? "You" : m.author}
+                {mine ? "You" : m.authorName || "Teammate"}
                 {m.sentAt && ` · ${new Date(m.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
               </span>
               <p
@@ -199,41 +195,10 @@ export function ChatPanel({
 
       <footer className="flex justify-between px-3 pb-2 text-xs text-zinc-500">
         <span>
-          Chatting as <strong>{author}</strong>{" "}
-          <button onClick={() => onAuthorChange("")} className="underline">
-            change
-          </button>
+          Chatting as <strong>{me.name}</strong>
         </span>
         {!floating && <span>Enter sends · Shift+Enter for a new line</span>}
       </footer>
     </div>
-  );
-}
-
-function NamePrompt({ onSave }: { onSave: (name: string) => void }) {
-  const [name, setName] = useState("");
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (name.trim()) onSave(name.trim());
-      }}
-      className="flex h-full flex-col justify-center gap-3 bg-white p-6 text-sm dark:bg-zinc-950 dark:text-zinc-100"
-    >
-      <label htmlFor="chat-name" className="font-medium">
-        What should your partner see as your name?
-      </label>
-      <input
-        id="chat-name"
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        maxLength={40}
-        className="rounded-lg border border-black/15 bg-transparent px-3 py-2 dark:border-white/20"
-      />
-      <button type="submit" className="rounded-lg bg-blue-600 py-2 font-medium text-white">
-        Join chat
-      </button>
-    </form>
   );
 }
