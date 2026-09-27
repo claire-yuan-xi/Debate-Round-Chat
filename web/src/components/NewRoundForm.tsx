@@ -10,26 +10,10 @@ interface Team {
   members: ({ _id: string; name: string | null } | null)[] | null;
 }
 
-// Speaking order in Public Forum, as a shortcut. Any tabs work the same way.
-const PF_SPEECHES = [
-  "1st Constructive",
-  "2nd Constructive",
-  "1st Crossfire",
-  "1st Rebuttal",
-  "2nd Rebuttal",
-  "2nd Crossfire",
-  "1st Summary",
-  "2nd Summary",
-  "Grand Crossfire",
-  "1st Final Focus",
-  "2nd Final Focus",
-];
-
 export function NewRoundForm({ teams, meId }: { teams: Team[]; meId: string }) {
   const [teamId, setTeamId] = useState(teams[0]?._id ?? "");
   const [title, setTitle] = useState("");
   const [teammateIds, setTeammateIds] = useState<string[]>([]);
-  const [speeches, setSpeeches] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -50,7 +34,7 @@ export function NewRoundForm({ teams, meId }: { teams: Team[]; meId: string }) {
         teamId,
         title,
         teammateIds,
-        speeches: speeches.split("\n"),
+        speeches: [],
       });
       if (!result.ok) setError(result.error);
     });
@@ -107,21 +91,6 @@ export function NewRoundForm({ teams, meId }: { teams: Team[]; meId: string }) {
         )}
         <p className={`text-xs ${muted}`}>Only the people in a round can see it.</p>
       </fieldset>
-
-      <label className="flex flex-col gap-1">
-        <span className="flex items-center justify-between font-medium">
-          Tabs, one per line (optional)
-          <button type="button" onClick={() => setSpeeches(PF_SPEECHES.join("\n"))} className="text-xs underline">
-            Use Public Forum speeches
-          </button>
-        </span>
-        <textarea
-          rows={6}
-          value={speeches}
-          onChange={(e) => setSpeeches(e.target.value)}
-          className={`${field} resize-y`}
-        />
-      </label>
 
       {error && <p className="text-red-600">{error}</p>}
       <button type="submit" disabled={pending} className={primaryButton}>
