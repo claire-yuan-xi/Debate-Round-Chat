@@ -6,8 +6,9 @@ import nodemailer from "nodemailer";
  * settings in development, the link is printed to the server console instead.
  */
 export async function sendSignInEmail(to: string, link: string) {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASSWORD;
+  const user = process.env.GMAIL_USER?.trim();
+  // Google shows app passwords in groups of four ("abcd efgh ..."); the spaces aren't part of it.
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
 
   if (!user || !pass) {
     if (process.env.NODE_ENV === "production") {
