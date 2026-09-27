@@ -12,10 +12,10 @@ export default async function NewTeamPage() {
           ← Back
         </Link>
         <h1 className="mt-3 text-2xl font-semibold tracking-tight">Create a team</h1>
-        <p className={`mt-2 ${muted}`}>You&apos;ll get an invite link to share. Everyone on the team is equal.</p>
+        <p className={`mt-2 ${muted}`}>You&apos;ll get an invite link to share. Name your team:</p>
       </div>
       <form action={createTeam} className="flex flex-col gap-3 text-sm">
-        <input name="name" required autoFocus maxLength={60} placeholder="e.g. Lincoln HS Debate" className={field} />
+        <input name="name" required autoFocus maxLength={60} className={field} />
         <button type="submit" className={primaryButton}>
           Create team
         </button>

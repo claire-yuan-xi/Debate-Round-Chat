@@ -66,7 +66,6 @@ export function NewRoundForm({ teams, meId }: { teams: Team[]; meId: string }) {
           maxLength={80}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. Round 3 – Pro vs. Lincoln"
           className={field}
         />
       </label>
@@ -120,7 +119,6 @@ export function NewRoundForm({ teams, meId }: { teams: Team[]; meId: string }) {
           rows={6}
           value={speeches}
           onChange={(e) => setSpeeches(e.target.value)}
-          placeholder={"There's always a General tab. You can add more during the round."}
           className={`${field} resize-y`}
         />
       </label>

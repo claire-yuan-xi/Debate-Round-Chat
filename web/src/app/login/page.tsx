@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Round Chat</h1>
         <p className={`mt-2 ${muted}`}>
-          A floating chat for you and your teammates during rounds. No password: we&apos;ll email you a link.
+          A floating chat for you and your teammates during rounds.
         </p>
       </div>
       <LoginForm next={nextPath} />

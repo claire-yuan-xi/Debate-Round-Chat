@@ -136,7 +136,6 @@ export function ChatPanel({
                 value={newTab}
                 onChange={(e) => setNewTab(e.target.value)}
                 onBlur={submitTab}
-                placeholder="e.g. Summary"
                 maxLength={40}
                 className="w-24 rounded-full border border-black/15 bg-transparent px-3 py-1 dark:border-white/20"
               />
