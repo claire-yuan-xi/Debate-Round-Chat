@@ -1,0 +1,11 @@
+# Only web/ (the site) and shared/ (the workflow engine it imports) are needed to build.
+.env*
+**/.env*
+**/node_modules
+**/.next
+**/dist
+.claude
+app
+docs
+studio
+scripts
