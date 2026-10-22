@@ -51,3 +51,36 @@ export async function resetInviteLink(teamId: string) {
   await client.patch(teamId).set({ inviteCode: newInviteCode() }).commit();
   redirect("/");
 }
+
+/** Take someone off a team and out of its rounds. Used for leaving and for removing a teammate. */
+async function removeFromTeam(teamId: string, memberId: string) {
+  const roundIds = await client.fetch<string[]>(
+    `*[_type == "round" && team._ref == $teamId && $memberId in participants[]._ref]._id`,
+    { teamId, memberId },
+  );
+  const tx = client.transaction().patch(teamId, (p) => p.unset([`members[_ref == "${memberId}"]`]));
+  for (const id of roundIds) tx.patch(id, (p) => p.unset([`participants[_ref == "${memberId}"]`]));
+  await tx.commit();
+}
+
+const isOnTeam = (teamId: string, memberId: string) =>
+  client.fetch<boolean>(`$memberId in *[_type == "team" && _id == $teamId][0].members[]._ref`, {
+    memberId,
+    teamId,
+  });
+
+export async function leaveTeam(teamId: string) {
+  const member = await requireMember();
+  if (await isOnTeam(teamId, member._id)) await removeFromTeam(teamId, member._id);
+  redirect("/");
+}
+
+/** Anyone on the team can remove anyone else; there are no team admins. */
+export async function removeTeammate(teamId: string, teammateId: string) {
+  const member = await requireMember();
+  if (teammateId === member._id) return leaveTeam(teamId);
+  if ((await isOnTeam(teamId, member._id)) && (await isOnTeam(teamId, teammateId))) {
+    await removeFromTeam(teamId, teammateId);
+  }
+  redirect("/");
+}

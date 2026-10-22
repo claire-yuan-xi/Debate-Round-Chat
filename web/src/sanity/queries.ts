@@ -53,7 +53,8 @@ export const ROUND_QUERY = defineQuery(
 export const ROUND_ACCESS_QUERY = defineQuery(
   `*[_type == "round" && _id == $id][0]{
     _id, _rev, workflowState,
-    "isParticipant": $memberId in participants[]._ref,
+    // Leaving or being removed from the team also closes off its rounds.
+    "isParticipant": $memberId in participants[]._ref && $memberId in team->members[]._ref,
     "teamId": team._ref,
     "teamMemberIds": team->members[]._ref,
     "speechKeys": speeches[]._key,

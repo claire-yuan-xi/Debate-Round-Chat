@@ -5,6 +5,7 @@ import { requireMember } from "@/lib/dal";
 import { resetInviteLink } from "@/app/actions/teams";
 import { signOut } from "@/app/actions/auth";
 import { CopyButton } from "@/components/CopyButton";
+import { TeamMembers } from "@/components/TeamMembers";
 import { card, muted, primaryButton, secondaryButton } from "@/components/ui";
 
 export default async function Home() {
@@ -75,12 +76,13 @@ export default async function Home() {
               const inviteLink = `${process.env.APP_URL}/join/${team.inviteCode}`;
               return (
                 <div key={team._id} className={`${card} flex flex-col gap-3`}>
-                  <div>
-                    <h3 className="font-medium">{team.name}</h3>
-                    <p className={`text-sm ${muted}`}>
-                      {(team.members ?? []).map((m) => m?.name ?? "New member").join(", ")}
-                    </p>
-                  </div>
+                  <h3 className="font-medium">{team.name}</h3>
+                  <TeamMembers
+                    teamId={team._id}
+                    teamName={team.name ?? "this team"}
+                    meId={member._id}
+                    members={(team.members ?? []).filter((m) => m !== null)}
+                  />
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className={muted}>Invite link:</span>
                     <code className="min-w-0 flex-1 truncate rounded bg-black/[.05] px-2 py-1 dark:bg-white/[.08]">
@@ -88,7 +90,7 @@ export default async function Home() {
                     </code>
                     <CopyButton text={inviteLink} />
                     <form action={resetInviteLink.bind(null, team._id)}>
-                      <button className={secondaryButton} title="The old link stops working">
+                      <button className={secondaryButton} title="The old link stops working. Use this after removing someone.">
                         New link
                       </button>
                     </form>

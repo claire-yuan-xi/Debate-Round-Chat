@@ -408,12 +408,12 @@ export type ROUND_QUERY_RESULT = {
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: ROUND_ACCESS_QUERY
-// Query: *[_type == "round" && _id == $id][0]{    _id, _rev, workflowState,    "isParticipant": $memberId in participants[]._ref,    "teamId": team._ref,    "teamMemberIds": team->members[]._ref,    "speechKeys": speeches[]._key,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  }
+// Query: *[_type == "round" && _id == $id][0]{    _id, _rev, workflowState,    // Leaving or being removed from the team also closes off its rounds.    "isParticipant": $memberId in participants[]._ref && $memberId in team->members[]._ref,    "teamId": team._ref,    "teamMemberIds": team->members[]._ref,    "speechKeys": speeches[]._key,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  }
 export type ROUND_ACCESS_QUERY_RESULT = {
   _id: string;
   _rev: string;
   workflowState: string | null;
-  isParticipant: boolean | null;
+  isParticipant: boolean | false | null;
   teamId: string | null;
   teamMemberIds: Array<string> | null;
   speechKeys: Array<string> | null;
@@ -444,7 +444,7 @@ declare global {
     '*[_type == "team" && inviteCode == $code][0]{ _id, name, "memberCount": count(members) }': TEAM_BY_INVITE_QUERY_RESULT;
     '*[_type == "round" && $memberId in participants[]._ref\n    && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "team": team->name,\n      "participants": participants[]->name\n    }': MY_OPEN_ROUNDS_QUERY_RESULT;
     '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState,\n    speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id,\n    "participants": participants[]->{ _id, name },\n    "team": team->{ _id, name, "members": members[]->{ _id, name } }\n  }': ROUND_QUERY_RESULT;
-    '*[_type == "round" && _id == $id][0]{\n    _id, _rev, workflowState,\n    "isParticipant": $memberId in participants[]._ref,\n    "teamId": team._ref,\n    "teamMemberIds": team->members[]._ref,\n    "speechKeys": speeches[]._key,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_ACCESS_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    _id, _rev, workflowState,\n    // Leaving or being removed from the team also closes off its rounds.\n    "isParticipant": $memberId in participants[]._ref && $memberId in team->members[]._ref,\n    "teamId": team._ref,\n    "teamMemberIds": team->members[]._ref,\n    "speechKeys": speeches[]._key,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_ACCESS_QUERY_RESULT;
     '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]\n    | order(sentAt asc){ _id, "authorId": author._ref, authorName, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
   }
 }
