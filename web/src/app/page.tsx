@@ -18,7 +18,7 @@ export default async function Home() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-4 py-10">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">Round Chat</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Sidenotes</h1>
         <div className={`flex items-center gap-3 text-sm ${muted}`}>
           <span>
             {member.name} ·{" "}

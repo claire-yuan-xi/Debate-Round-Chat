@@ -8,7 +8,7 @@ import {WorkflowStateBadge} from './workflow/WorkflowStateBadge'
 
 export default defineConfig({
   name: 'default',
-  title: 'Round Chat (team)',
+  title: 'Sidenotes',
 
   projectId: 'jelfmjhs',
   dataset: 'team',

@@ -20,11 +20,11 @@ export async function sendSignInEmail(to: string, link: string) {
 
   const transport = nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
   await transport.sendMail({
-    from: `Round Chat <${user}>`,
+    from: `Sidenotes <${user}>`,
     to,
-    subject: "Your Round Chat sign-in link",
-    text: `Sign in to Round Chat:\n\n${link}\n\nThe link works once and expires in 15 minutes. If you didn't ask for it, ignore this email.`,
-    html: `<p>Sign in to Round Chat:</p>
+    subject: "Your Sidenotes sign-in link",
+    text: `Sign in to Sidenotes:\n\n${link}\n\nThe link works once and expires in 15 minutes. If you didn't ask for it, ignore this email.`,
+    html: `<p>Sign in to Sidenotes:</p>
 <p><a href="${link}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none">Sign in</a></p>
 <p style="color:#666;font-size:13px">The link works once and expires in 15 minutes. If you didn't ask for it, ignore this email.</p>`,
   });

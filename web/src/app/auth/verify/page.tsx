@@ -7,7 +7,7 @@ export default async function VerifyPage({ searchParams }: PageProps<"/auth/veri
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in to Round Chat</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Sign in to Sidenotes</h1>
       {typeof token === "string" && token ? (
         <>
           <p className={muted}>Press the button to finish signing in on this device.</p>

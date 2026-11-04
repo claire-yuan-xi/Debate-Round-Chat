@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Round chat",
-  description: "Partner chat for debate rounds",
+  title: "Sidenotes",
+  description: "Lightweight messaging in a small floating window, so you can stay in the conversation without leaving what you're doing.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

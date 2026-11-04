@@ -11,9 +11,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Round Chat</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Sidenotes</h1>
         <p className={`mt-2 ${muted}`}>
-          A floating chat for you and your teammates during rounds.
+          Lightweight messaging in a small floating window, so you can stay in the conversation without leaving what you&apos;re doing.
         </p>
       </div>
       <LoginForm next={nextPath} />
