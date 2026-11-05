@@ -17,19 +17,19 @@ export default async function JoinPage({ params }: PageProps<"/join/[code]">) {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Join {team.name}</h1>
             <p className={`mt-2 ${muted}`}>
-              {team.memberCount} {team.memberCount === 1 ? "person is" : "people are"} on this team.
+              {team.memberCount} {team.memberCount === 1 ? "person is" : "people are"} in this group.
             </p>
           </div>
           <form action={joinTeam.bind(null, code)}>
             <button type="submit" className={primaryButton}>
-              Join team
+              Join group
             </button>
           </form>
         </>
       ) : (
         <>
           <h1 className="text-2xl font-semibold tracking-tight">This invite link doesn&apos;t work</h1>
-          <p className={muted}>Someone may have made a new one. Ask a teammate for the current link.</p>
+          <p className={muted}>Someone may have made a new one. Ask someone in the group for the current link.</p>
           <Link href="/" className="underline">
             Go home
           </Link>

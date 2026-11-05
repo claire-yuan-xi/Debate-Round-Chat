@@ -63,7 +63,7 @@ export async function signInWithToken(token: string): Promise<Result> {
   const memberId = existing?._id ?? (await client.create({ _type: "member", email: link.email }))._id;
   await createSession(memberId);
 
-  // New members pick the name teammates will see first.
+  // New members pick the name people will see first.
   const next = safeNext(link.next);
   redirect(existing?.name ? next : `/welcome?next=${encodeURIComponent(next)}`);
 }

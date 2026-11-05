@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { createPortal } from "react-dom";
 import type { MESSAGES_QUERY_RESULT, ROUND_QUERY_RESULT } from "../../sanity.types";
+import { endChat } from "@/app/actions/chats";
 import { addParticipant, getRoundState, moveRound } from "@/app/actions/rounds";
-import { availableTransitions, stateTitle, type WorkflowDefinition } from "@shared/workflow";
+import { availableTransitions, type WorkflowDefinition } from "@shared/workflow";
 import { ChatPanel } from "./ChatPanel";
+import { CopyButton } from "./CopyButton";
 import { useStopwatch } from "./useStopwatch";
 import { muted, secondaryButton } from "./ui";
 
@@ -44,11 +46,16 @@ export function RoundRoom({
   initialMessages,
   workflow,
   me,
+  backHref = "/",
+  shareLink,
 }: {
   initialRound: Round;
   initialMessages: Message[];
   workflow: WorkflowDefinition | null;
   me: Me;
+  /** Guests have no home page to go back to. */
+  backHref?: string | null;
+  shareLink?: string;
 }) {
   const roundId = initialRound._id;
   const [round, setRound] = useState<Round | null>(initialRound);
@@ -88,6 +95,11 @@ export function RoundRoom({
     };
   }, [roundId]);
 
+  // A chat that's gone takes its floating window with it.
+  useEffect(() => {
+    if (!round) pipWindow?.close();
+  }, [round, pipWindow]);
+
   // If the selected tab gets removed, fall back to General.
   const activeTab = round?.speeches?.some((s) => s._key === selectedTab) ? selectedTab : null;
 
@@ -118,10 +130,16 @@ export function RoundRoom({
   if (!round) {
     return (
       <main className="mx-auto flex max-w-md flex-col gap-3 px-4 py-16">
-        <p>This round is gone, or you&apos;re no longer in it.</p>
-        <Link href="/" className="underline">
-          Back to your rounds
-        </Link>
+        <p>
+          {initialRound.kind === "room"
+            ? "This chat has ended."
+            : "This chat is gone, or you're no longer in it."}
+        </p>
+        {backHref && (
+          <Link href={backHref} className="underline">
+            Back home
+          </Link>
+        )}
       </main>
     );
   }
@@ -130,38 +148,51 @@ export function RoundRoom({
   const addable = (round.team?.members ?? []).filter(
     (m): m is { _id: string; name: string | null } => Boolean(m && !participants.some((p) => p._id === m._id)),
   );
-  const moves = availableTransitions(workflow, round.workflowState, "person");
+  const reopen = round.kind
+    ? undefined
+    : availableTransitions(workflow, round.workflowState, "person").find(
+        (t) => workflow?.states.find((s) => s.id === t.to)?.chatOpen,
+      );
+  const title =
+    round.kind === "direct"
+      ? (participants.find((p) => p._id !== me._id)?.name ?? "Direct message")
+      : (round.title ?? "");
+  const canEnd = round.kind === "room" ? round.createdBy === me._id : !round.kind && round.chatOpen;
+
+  function end() {
+    run(async () => {
+      const result = await endChat(roundId);
+      if (result.ok && round?.kind === "room") setRound(null);
+      return result;
+    });
+  }
 
   const panel = (
     <ChatPanel
       round={round}
+      title={title}
       messages={messages}
       activeTab={activeTab}
       onTabChange={setSelectedTab}
       me={me}
       stopwatch={stopwatch}
       floating={pipWindow !== null}
+      onEnd={canEnd ? end : undefined}
+      onReopen={reopen && (() => run(() => moveRound(roundId, reopen.id)))}
     />
   );
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-2xl flex-col gap-3 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link href="/" className={`text-sm hover:underline ${muted}`}>
-          ← Rounds
-        </Link>
+        {backHref ? (
+          <Link href={backHref} className={`text-sm hover:underline ${muted}`}>
+            ← Home
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold">Sidenotes</span>
+        )}
         <div className="flex items-center gap-2">
-          {moves.map((move) => (
-            <button
-              key={move._key}
-              disabled={pending}
-              onClick={() => run(() => moveRound(roundId, move.id))}
-              className={secondaryButton}
-              title={`Moves the round to ${stateTitle(workflow, move.to)}`}
-            >
-              {move.title}
-            </button>
-          ))}
           {pipWindow ? (
             <button onClick={() => pipWindow.close()} className={secondaryButton}>
               Bring chat back
@@ -179,9 +210,32 @@ export function RoundRoom({
         </div>
       </div>
 
+      {round.kind === "room" && (
+        <div className={`flex flex-col gap-2 text-sm ${muted}`}>
+          <span>
+            In this chat: {(round.guests ?? []).map((g) => (g.guestId === me._id ? "you" : g.name)).join(", ")}
+          </span>
+          {shareLink && (
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded bg-black/[.05] px-2 py-1 dark:bg-white/[.08]">
+                {shareLink}
+              </code>
+              <CopyButton text={shareLink} />
+            </div>
+          )}
+          <span suppressHydrationWarning>
+            Anyone with the link can join and read this chat. It&apos;s deleted{" "}
+            {round.expiresAt &&
+              new Date(round.expiresAt).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}
+            .
+          </span>
+        </div>
+      )}
+
+      {!round.kind && (
       <div className={`flex flex-wrap items-center gap-2 text-sm ${muted}`}>
         <span>
-          In this round: {participants.map((p) => (p._id === me._id ? "you" : (p.name ?? "New member"))).join(", ")}
+          In this chat: {participants.map((p) => (p._id === me._id ? "you" : (p.name ?? "New member"))).join(", ")}
         </span>
         {addable.length > 0 && (
           <select
@@ -189,9 +243,9 @@ export function RoundRoom({
             disabled={pending}
             onChange={(e) => e.target.value && run(() => addParticipant(roundId, e.target.value))}
             className="rounded-md border border-black/15 bg-transparent px-2 py-0.5 dark:border-white/20"
-            aria-label="Add a teammate to this round"
+            aria-label="Add someone to this chat"
           >
-            <option value="">+ Add teammate</option>
+            <option value="">+ Add someone</option>
             {addable.map((m) => (
               <option key={m._id} value={m._id}>
                 {m.name ?? "New member"}
@@ -200,6 +254,7 @@ export function RoundRoom({
           </select>
         )}
       </div>
+      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

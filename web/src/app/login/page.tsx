@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getMember, safeNext } from "@/lib/dal";
 import { LoginForm } from "@/components/LoginForm";
@@ -17,6 +18,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </p>
       </div>
       <LoginForm next={nextPath} />
+      <Link href="/r/new" className={`text-sm underline ${muted}`}>
+        Start a chat without an account
+      </Link>
     </main>
   );
 }

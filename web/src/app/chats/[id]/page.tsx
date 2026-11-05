@@ -5,11 +5,12 @@ import { getRoundAccess, requireMember } from "@/lib/dal";
 import { RoundRoom } from "@/components/RoundRoom";
 import type { WorkflowDefinition } from "@shared/workflow";
 
-export default async function RoundPage({ params }: PageProps<"/rounds/[id]">) {
+export default async function ChatPage({ params }: PageProps<"/chats/[id]">) {
   const { id } = await params;
-  const member = await requireMember(`/rounds/${id}`);
-  // Rounds you're not in look the same as rounds that don't exist.
-  if (!(await getRoundAccess(id, member._id))) notFound();
+  const member = await requireMember(`/chats/${id}`);
+  // Chats you're not in look the same as chats that don't exist.
+  const access = await getRoundAccess(id, member._id);
+  if (!access || access.kind) notFound();
 
   const [round, messages, workflow] = await Promise.all([
     client.fetch(ROUND_QUERY, { id }),

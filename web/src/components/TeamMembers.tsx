@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { openDirectMessage } from "@/app/actions/chats";
 import { leaveTeam, removeTeammate } from "@/app/actions/teams";
 import { muted } from "./ui";
 
@@ -11,7 +12,7 @@ interface Props {
   members: { _id: string; name: string | null }[];
 }
 
-/** The team's member list, with Remove next to each teammate and Leave team for yourself. */
+/** The group's member list, with Message and Remove next to each person and Leave group for yourself. */
 export function TeamMembers({ teamId, teamName, meId, members }: Props) {
   const [pending, startTransition] = useTransition();
 
@@ -28,9 +29,18 @@ export function TeamMembers({ teamId, teamName, meId, members }: Props) {
             {m._id !== meId && (
               <button
                 disabled={pending}
+                onClick={() => startTransition(() => openDirectMessage(m._id))}
+                className={`text-xs underline ${muted}`}
+              >
+                message
+              </button>
+            )}
+            {m._id !== meId && (
+              <button
+                disabled={pending}
                 onClick={() =>
                   confirmThen(
-                    `Remove ${m.name ?? "this person"} from ${teamName}? They'll lose access to the team's rounds.`,
+                    `Remove ${m.name ?? "this person"} from ${teamName}? They'll lose access to the group's chats.`,
                     () => removeTeammate(teamId, m._id),
                   )
                 }
@@ -45,11 +55,11 @@ export function TeamMembers({ teamId, teamName, meId, members }: Props) {
       <button
         disabled={pending}
         onClick={() =>
-          confirmThen(`Leave ${teamName}? You'll lose access to its rounds.`, () => leaveTeam(teamId))
+          confirmThen(`Leave ${teamName}? You'll lose access to its chats.`, () => leaveTeam(teamId))
         }
         className={`self-start text-xs underline ${muted}`}
       >
-        Leave team
+        Leave group
       </button>
     </div>
   );

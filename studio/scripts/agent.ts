@@ -68,7 +68,7 @@ async function finishStale(hours = '12') {
 async function list() {
   const def = await getWorkflow()
   const rounds = await client.fetch<{_id: string; title: string; workflowState?: string}[]>(
-    `*[_type == "round"] | order(_updatedAt desc){_id, title, workflowState}`,
+    `*[_type == "round" && !defined(kind)] | order(_updatedAt desc){_id, title, workflowState}`,
   )
   for (const r of rounds) {
     const moves = availableTransitions(def, r.workflowState, 'agent').map((t) => t.id)

@@ -26,7 +26,14 @@ export const message = defineType({
       type: 'reference',
       to: [{type: 'member'}],
       weak: true,
-      validation: (rule) => rule.required(),
+      hidden: ({document}) => Boolean(document?.guestId),
+    }),
+    defineField({
+      name: 'guestId',
+      description: 'Who sent it in a temporary chat, instead of an author.',
+      type: 'string',
+      readOnly: true,
+      hidden: ({document}) => !document?.guestId,
     }),
     defineField({
       name: 'authorName',

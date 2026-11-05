@@ -40,7 +40,7 @@ export async function joinTeam(code: string) {
   redirect("/");
 }
 
-/** Anyone on the team can replace the invite link, for example if it was shared too widely. */
+/** Anyone in the group can replace the invite link, for example if it was shared too widely. */
 export async function resetInviteLink(teamId: string) {
   const member = await requireMember();
   const onTeam = await client.fetch<boolean>(`$memberId in *[_id == $teamId][0].members[]._ref`, {
@@ -52,7 +52,7 @@ export async function resetInviteLink(teamId: string) {
   redirect("/");
 }
 
-/** Take someone off a team and out of its rounds. Used for leaving and for removing a teammate. */
+/** Take someone out of a group and its chats. Used for leaving and for removing someone. */
 async function removeFromTeam(teamId: string, memberId: string) {
   const roundIds = await client.fetch<string[]>(
     `*[_type == "round" && team._ref == $teamId && $memberId in participants[]._ref]._id`,
@@ -75,7 +75,7 @@ export async function leaveTeam(teamId: string) {
   redirect("/");
 }
 
-/** Anyone on the team can remove anyone else; there are no team admins. */
+/** Anyone in a group can remove anyone else; there are no group admins. */
 export async function removeTeammate(teamId: string, teammateId: string) {
   const member = await requireMember();
   if (teammateId === member._id) return leaveTeam(teamId);

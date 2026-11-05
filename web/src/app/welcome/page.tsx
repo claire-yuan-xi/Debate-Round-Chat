@@ -10,7 +10,7 @@ export default async function WelcomePage({ searchParams }: PageProps<"/welcome"
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          {member.name ? "Change your name" : "What should teammates call you?"}
+          {member.name ? "Change your name" : "What should people call you?"}
         </h1>
         <p className={`mt-2 ${muted}`}>This is the name on your messages.</p>
       </div>

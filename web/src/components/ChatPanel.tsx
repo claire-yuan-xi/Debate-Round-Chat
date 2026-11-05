@@ -2,27 +2,35 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
 import { addSpeechTab, sendMessage } from "@/app/actions/rounds";
+import { ConfirmButton } from "./ConfirmButton";
 import type { Me, Message, Round } from "./RoundRoom";
 import { formatElapsed, type Stopwatch } from "./useStopwatch";
 
 interface Props {
   round: Round;
+  title: string;
   messages: Message[];
   activeTab: string | null;
   onTabChange: (key: string | null) => void;
   me: Me;
   stopwatch: Stopwatch;
   floating: boolean;
+  /** Set when this person can end the chat. It lives here so it's there in the floating window too. */
+  onEnd?: () => void;
+  onReopen?: () => void;
 }
 
 export function ChatPanel({
   round,
+  title,
   messages,
   activeTab,
   onTabChange,
   me,
   stopwatch,
   floating,
+  onEnd,
+  onReopen,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [newTab, setNewTab] = useState<string | null>(null);
@@ -31,6 +39,8 @@ export function ChatPanel({
   const [pending, startTransition] = useTransition();
   const listRef = useRef<HTMLOListElement>(null);
 
+  // Group chats have a stopwatch and tabs. Direct messages and temporary chats are just a chat.
+  const isRound = !round.kind;
   const tabKey = (key: string | null | undefined) => key ?? "general";
   const tabs = [{ _key: null, name: "General" }, ...(round.speeches ?? [])];
   const visible = messages.filter((m) => tabKey(m.speechKey) === tabKey(activeTab));
@@ -90,22 +100,35 @@ export function ChatPanel({
 
   return (
     <div className="flex h-full flex-col bg-white text-sm text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <header className="flex items-center gap-2 border-b border-black/10 px-3 py-2 dark:border-white/15">
-        <h1 className="min-w-0 flex-1 truncate font-semibold" title={round.title ?? ""}>
-          {round.title}
+      <header className="flex flex-wrap items-center gap-2 border-b border-black/10 px-3 py-2 dark:border-white/15">
+        <h1 className="min-w-0 flex-1 truncate font-semibold" title={title}>
+          {title}
         </h1>
-        <span className="font-mono text-base tabular-nums">{formatElapsed(stopwatch.elapsedMs)}</span>
-        <button
-          onClick={stopwatch.toggle}
-          className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-white dark:bg-zinc-100 dark:text-zinc-900"
-        >
-          {stopwatch.running ? "Pause" : "Start"}
-        </button>
-        <button onClick={stopwatch.reset} className="rounded border border-black/15 px-2 py-0.5 text-xs dark:border-white/20">
-          Reset
-        </button>
+        {isRound && (
+          <>
+            <span className="font-mono text-base tabular-nums">{formatElapsed(stopwatch.elapsedMs)}</span>
+            <button
+              onClick={stopwatch.toggle}
+              className="rounded bg-zinc-900 px-2 py-0.5 text-xs text-white dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {stopwatch.running ? "Pause" : "Start"}
+            </button>
+            <button onClick={stopwatch.reset} className="rounded border border-black/15 px-2 py-0.5 text-xs dark:border-white/20">
+              Reset
+            </button>
+          </>
+        )}
+        {onEnd && (
+          <ConfirmButton
+            label="End chat"
+            question={round.kind === "room" ? "Delete for everyone?" : "End for everyone?"}
+            onConfirm={onEnd}
+            className="rounded border border-black/15 px-2 py-0.5 text-xs dark:border-white/20"
+          />
+        )}
       </header>
 
+      {isRound && (
       <nav className="flex gap-1 overflow-x-auto border-b border-black/10 px-2 py-1.5 dark:border-white/15">
         {tabs.map((tab) => {
           const active = tabKey(tab._key) === tabKey(activeTab);
@@ -126,7 +149,7 @@ export function ChatPanel({
         })}
         {round.chatOpen &&
           (newTab === null ? (
-            <button onClick={() => setNewTab("")} className="shrink-0 rounded-full px-3 py-1 text-zinc-500" title="Add a speech tab">
+            <button onClick={() => setNewTab("")} className="shrink-0 rounded-full px-3 py-1 text-zinc-500" title="Add a tab">
               + Tab
             </button>
           ) : (
@@ -142,15 +165,16 @@ export function ChatPanel({
             </form>
           ))}
       </nav>
+      )}
 
       <ol ref={listRef} className="flex-1 space-y-2 overflow-y-auto px-3 py-2">
-        {visible.length === 0 && <li className="text-zinc-500">No messages in this tab yet.</li>}
+        {visible.length === 0 && <li className="text-zinc-500">No messages {isRound ? "in this tab " : ""}yet.</li>}
         {visible.map((m) => {
           const mine = m.authorId === me._id;
           return (
             <li key={m._id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
               <span className="text-xs text-zinc-500">
-                {mine ? "You" : m.authorName || "Teammate"}
+                {mine ? "You" : m.authorName || "Someone"}
                 {m.sentAt && ` · ${new Date(m.sentAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}
               </span>
               <p
@@ -175,7 +199,7 @@ export function ChatPanel({
             onKeyDown={onKeyDown}
             rows={2}
             maxLength={2000}
-            placeholder={`Message ${tabs.find((t) => tabKey(t._key) === tabKey(activeTab))?.name ?? ""}…`}
+            placeholder={isRound ? `Message ${tabs.find((t) => tabKey(t._key) === tabKey(activeTab))?.name ?? ""}…` : "Message…"}
             className="min-w-0 flex-1 resize-none rounded-lg border border-black/15 bg-transparent px-2 py-1 dark:border-white/20"
           />
           <button
@@ -188,7 +212,18 @@ export function ChatPanel({
         </form>
       ) : (
         <p className="border-t border-black/10 p-3 text-zinc-500 dark:border-white/15">
-          Chat is closed while this round is {round.stateTitle ?? round.workflowState}.
+          {round.kind === "direct" ? (
+            "You're no longer in a group together, so this chat is read-only."
+          ) : (
+            <>
+              This chat has ended.{" "}
+              {onReopen && (
+                <button onClick={onReopen} className="underline">
+                  Reopen it
+                </button>
+              )}
+            </>
+          )}
         </p>
       )}
 

@@ -76,6 +76,7 @@ export type Message = {
   round?: RoundReference;
   speechKey?: string;
   author?: MemberReference;
+  guestId?: string;
   authorName?: string;
   body?: string;
   sentAt?: string;
@@ -94,8 +95,20 @@ export type Round = {
   _createdAt: string;
   _updatedAt: string;
   _rev: string;
+  kind?: "direct" | "room";
   title?: string;
   team?: TeamReference;
+  joinCode?: string;
+  expiresAt?: string;
+  createdBy?: string;
+  creatorHash?: string;
+  guests?: Array<{
+    guestId?: string;
+    name?: string;
+    memberId?: string;
+    _type: "roomGuest";
+    _key: string;
+  }>;
   participants?: Array<
     {
       _key: string;
@@ -370,27 +383,73 @@ export type TEAM_BY_INVITE_QUERY_RESULT = {
 } | null;
 
 // Source: ../web/src/sanity/queries.ts
-// Variable: MY_OPEN_ROUNDS_QUERY
-// Query: *[_type == "round" && $memberId in participants[]._ref    && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]    | order(_updatedAt desc){      _id, title,      "team": team->name,      "participants": participants[]->name    }
-export type MY_OPEN_ROUNDS_QUERY_RESULT = Array<{
+// Variable: MY_CHATS_QUERY
+// Query: *[_type == "round" && select(    kind == "room" => $memberId in guests[].memberId && dateTime(expiresAt) > dateTime(now()),    kind == "direct" => $memberId in participants[]._ref && count(*[_type == "message" && round._ref == ^._id]) > 0,    $memberId in participants[]._ref && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  )]{    _id, kind, title, joinCode,    "team": team->name,    "participants": participants[]->{ _id, name },    "startedIt": guests[guestId == ^.createdBy][0].memberId == $memberId,    "lastAt": coalesce(*[_type == "message" && round._ref == ^._id] | order(sentAt desc)[0].sentAt, _createdAt)  } | order(lastAt desc)
+export type MY_CHATS_QUERY_RESULT = Array<{
   _id: string;
+  kind: "direct" | "room" | null;
   title: string | null;
+  joinCode: string | null;
   team: string | null;
-  participants: Array<string | null> | null;
+  participants: Array<{
+    _id: string;
+    name: string | null;
+  }> | null;
+  startedIt: boolean;
+  lastAt: string;
 }>;
 
 // Source: ../web/src/sanity/queries.ts
+// Variable: END_CHAT_QUERY
+// Query: *[_type == "round" && _id == $id][0]{    kind, workflowState, createdBy,    "creatorMemberId": guests[guestId == ^.createdBy][0].memberId  }
+export type END_CHAT_QUERY_RESULT = {
+  kind: "direct" | "room" | null;
+  workflowState: string | null;
+  createdBy: string | null;
+  creatorMemberId: string | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: MANAGE_QUERY
+// Query: {    "people": *[_type == "member"] | order(lower(coalesce(name, email)) asc){      _id, name, email,      "groups": *[_type == "team" && ^._id in members[]._ref].name    },    "groups": *[_type == "team"] | order(lower(name) asc){      _id, name,      "memberIds": members[]._ref,      "members": members[]->name,      "chatCount": count(*[_type == "round" && team._ref == ^._id])    },    "openChats": count(*[_type == "round" && !defined(kind) && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]),    "directChats": count(*[_type == "round" && kind == "direct"]),    "temporaryChats": count(*[_type == "round" && kind == "room" && dateTime(expiresAt) > dateTime(now())])  }
+export type MANAGE_QUERY_RESULT = {
+  people: Array<{
+    _id: string;
+    name: string | null;
+    email: string | null;
+    groups: Array<string | null>;
+  }>;
+  groups: Array<{
+    _id: string;
+    name: string | null;
+    memberIds: Array<string> | null;
+    members: Array<string | null> | null;
+    chatCount: number;
+  }>;
+  openChats: number;
+  directChats: number;
+  temporaryChats: number;
+};
+
+// Source: ../web/src/sanity/queries.ts
 // Variable: ROUND_QUERY
-// Query: *[_type == "round" && _id == $id][0]{    _id, title, workflowState,    speeches[]{ _key, name },    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id,    "participants": participants[]->{ _id, name },    "team": team->{ _id, name, "members": members[]->{ _id, name } }  }
+// Query: *[_type == "round" && _id == $id][0]{    _id, kind, title, workflowState, expiresAt, joinCode, createdBy,    speeches[]{ _key, name },    guests[]{ guestId, name },    "chatOpen": select(      kind == "room" => true,      // Direct messages go read-only once two people stop sharing a team.      kind == "direct" => count(*[_type == "team" && ^.participants[0]._ref in members[]._ref && ^.participants[1]._ref in members[]._ref]) > 0,      workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id    ),    "participants": participants[]->{ _id, name },    "team": team->{ _id, name, "members": members[]->{ _id, name } }  }
 export type ROUND_QUERY_RESULT = {
   _id: string;
+  kind: "direct" | "room" | null;
   title: string | null;
   workflowState: string | null;
+  expiresAt: string | null;
+  joinCode: string | null;
+  createdBy: string | null;
   speeches: Array<{
     _key: string;
     name: string | null;
   }> | null;
-  stateTitle: string | null;
+  guests: Array<{
+    guestId: string | null;
+    name: string | null;
+  }> | null;
   chatOpen: boolean | false | true | null;
   participants: Array<{
     _id: string;
@@ -408,11 +467,13 @@ export type ROUND_QUERY_RESULT = {
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: ROUND_ACCESS_QUERY
-// Query: *[_type == "round" && _id == $id][0]{    _id, _rev, workflowState,    // Leaving or being removed from the team also closes off its rounds.    "isParticipant": $memberId in participants[]._ref && $memberId in team->members[]._ref,    "teamId": team._ref,    "teamMemberIds": team->members[]._ref,    "speechKeys": speeches[]._key,    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id  }
+// Query: *[_type == "round" && _id == $id][0]{    _id, _rev, kind, workflowState, createdBy,    "isParticipant": select(      kind == "room" => $guestId in guests[].guestId && dateTime(expiresAt) > dateTime(now()),      kind == "direct" => $memberId in participants[]._ref,      // Leaving or being removed from the team also closes off its rounds.      $memberId in participants[]._ref && $memberId in team->members[]._ref    ),    "teamId": team._ref,    "teamMemberIds": team->members[]._ref,    "speechKeys": speeches[]._key,    "chatOpen": select(      kind == "room" => true,      kind == "direct" => count(*[_type == "team" && ^.participants[0]._ref in members[]._ref && ^.participants[1]._ref in members[]._ref]) > 0,      workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id    )  }
 export type ROUND_ACCESS_QUERY_RESULT = {
   _id: string;
   _rev: string;
+  kind: "direct" | "room" | null;
   workflowState: string | null;
+  createdBy: string | null;
   isParticipant: boolean | false | null;
   teamId: string | null;
   teamMemberIds: Array<string> | null;
@@ -422,7 +483,7 @@ export type ROUND_ACCESS_QUERY_RESULT = {
 
 // Source: ../web/src/sanity/queries.ts
 // Variable: MESSAGES_QUERY
-// Query: *[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]    | order(sentAt asc){ _id, "authorId": author._ref, authorName, body, sentAt, speechKey }
+// Query: *[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]    | order(sentAt asc){ _id, "authorId": coalesce(author._ref, guestId), authorName, body, sentAt, speechKey }
 export type MESSAGES_QUERY_RESULT = Array<{
   _id: string;
   authorId: string | null;
@@ -431,6 +492,42 @@ export type MESSAGES_QUERY_RESULT = Array<{
   sentAt: string | null;
   speechKey: string | null;
 }>;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: ROOM_BY_CODE_QUERY
+// Query: *[_type == "round" && kind == "room" && joinCode == $code && dateTime(expiresAt) > dateTime(now())][0]{    _id, title, expiresAt, guests[]{ guestId, memberId }  }
+export type ROOM_BY_CODE_QUERY_RESULT = {
+  _id: string;
+  title: string | null;
+  expiresAt: string | null;
+  guests: Array<{
+    guestId: string | null;
+    memberId: string | null;
+  }> | null;
+} | null;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: RECENT_ROOMS_BY_CREATOR_QUERY
+// Query: count(*[_type == "round" && kind == "room" && creatorHash == $creatorHash && _createdAt > $since])
+export type RECENT_ROOMS_BY_CREATOR_QUERY_RESULT = number;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: ACTIVE_ROOM_COUNT_QUERY
+// Query: count(*[_type == "round" && kind == "room" && dateTime(expiresAt) > dateTime(now())])
+export type ACTIVE_ROOM_COUNT_QUERY_RESULT = number;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: EXPIRED_ROOMS_QUERY
+// Query: *[_type == "round" && kind == "room" && dateTime(expiresAt) <= dateTime(now())][0...50]._id
+export type EXPIRED_ROOMS_QUERY_RESULT = Array<string>;
+
+// Source: ../web/src/sanity/queries.ts
+// Variable: GUEST_MESSAGE_COUNTS_QUERY
+// Query: {    "inRoom": count(*[_type == "message" && round._ref == $id]),    "recentFromGuest": count(*[_type == "message" && round._ref == $id && guestId == $guestId && sentAt > $since])  }
+export type GUEST_MESSAGE_COUNTS_QUERY_RESULT = {
+  inRoom: number;
+  recentFromGuest: number;
+};
 
 // Query TypeMap
 declare global {
@@ -442,10 +539,17 @@ declare global {
     'count(*[_type == "loginToken" && email == $email && _createdAt > $since])': RECENT_LOGIN_TOKENS_QUERY_RESULT;
     '*[_type == "team" && $memberId in members[]._ref] | order(name asc){\n    _id, name, inviteCode,\n    "members": members[]->{ _id, name }\n  }': MY_TEAMS_QUERY_RESULT;
     '*[_type == "team" && inviteCode == $code][0]{ _id, name, "memberCount": count(members) }': TEAM_BY_INVITE_QUERY_RESULT;
-    '*[_type == "round" && $memberId in participants[]._ref\n    && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]\n    | order(_updatedAt desc){\n      _id, title,\n      "team": team->name,\n      "participants": participants[]->name\n    }': MY_OPEN_ROUNDS_QUERY_RESULT;
-    '*[_type == "round" && _id == $id][0]{\n    _id, title, workflowState,\n    speeches[]{ _key, name },\n    "stateTitle": *[_id == "workflow-round"][0].states[id == ^.workflowState][0].title,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id,\n    "participants": participants[]->{ _id, name },\n    "team": team->{ _id, name, "members": members[]->{ _id, name } }\n  }': ROUND_QUERY_RESULT;
-    '*[_type == "round" && _id == $id][0]{\n    _id, _rev, workflowState,\n    // Leaving or being removed from the team also closes off its rounds.\n    "isParticipant": $memberId in participants[]._ref && $memberId in team->members[]._ref,\n    "teamId": team._ref,\n    "teamMemberIds": team->members[]._ref,\n    "speechKeys": speeches[]._key,\n    "chatOpen": workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  }': ROUND_ACCESS_QUERY_RESULT;
-    '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]\n    | order(sentAt asc){ _id, "authorId": author._ref, authorName, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
+    '*[_type == "round" && select(\n    kind == "room" => $memberId in guests[].memberId && dateTime(expiresAt) > dateTime(now()),\n    kind == "direct" => $memberId in participants[]._ref && count(*[_type == "message" && round._ref == ^._id]) > 0,\n    $memberId in participants[]._ref && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n  )]{\n    _id, kind, title, joinCode,\n    "team": team->name,\n    "participants": participants[]->{ _id, name },\n    "startedIt": guests[guestId == ^.createdBy][0].memberId == $memberId,\n    "lastAt": coalesce(*[_type == "message" && round._ref == ^._id] | order(sentAt desc)[0].sentAt, _createdAt)\n  } | order(lastAt desc)': MY_CHATS_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    kind, workflowState, createdBy,\n    "creatorMemberId": guests[guestId == ^.createdBy][0].memberId\n  }': END_CHAT_QUERY_RESULT;
+    '{\n    "people": *[_type == "member"] | order(lower(coalesce(name, email)) asc){\n      _id, name, email,\n      "groups": *[_type == "team" && ^._id in members[]._ref].name\n    },\n    "groups": *[_type == "team"] | order(lower(name) asc){\n      _id, name,\n      "memberIds": members[]._ref,\n      "members": members[]->name,\n      "chatCount": count(*[_type == "round" && team._ref == ^._id])\n    },\n    "openChats": count(*[_type == "round" && !defined(kind) && workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id]),\n    "directChats": count(*[_type == "round" && kind == "direct"]),\n    "temporaryChats": count(*[_type == "round" && kind == "room" && dateTime(expiresAt) > dateTime(now())])\n  }': MANAGE_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    _id, kind, title, workflowState, expiresAt, joinCode, createdBy,\n    speeches[]{ _key, name },\n    guests[]{ guestId, name },\n    "chatOpen": select(\n      kind == "room" => true,\n      // Direct messages go read-only once two people stop sharing a team.\n      kind == "direct" => count(*[_type == "team" && ^.participants[0]._ref in members[]._ref && ^.participants[1]._ref in members[]._ref]) > 0,\n      workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n    ),\n    "participants": participants[]->{ _id, name },\n    "team": team->{ _id, name, "members": members[]->{ _id, name } }\n  }': ROUND_QUERY_RESULT;
+    '*[_type == "round" && _id == $id][0]{\n    _id, _rev, kind, workflowState, createdBy,\n    "isParticipant": select(\n      kind == "room" => $guestId in guests[].guestId && dateTime(expiresAt) > dateTime(now()),\n      kind == "direct" => $memberId in participants[]._ref,\n      // Leaving or being removed from the team also closes off its rounds.\n      $memberId in participants[]._ref && $memberId in team->members[]._ref\n    ),\n    "teamId": team._ref,\n    "teamMemberIds": team->members[]._ref,\n    "speechKeys": speeches[]._key,\n    "chatOpen": select(\n      kind == "room" => true,\n      kind == "direct" => count(*[_type == "team" && ^.participants[0]._ref in members[]._ref && ^.participants[1]._ref in members[]._ref]) > 0,\n      workflowState in *[_id == "workflow-round"][0].states[chatOpen == true].id\n    )\n  }': ROUND_ACCESS_QUERY_RESULT;
+    '*[_type == "message" && round._ref == $id && defined(body) && defined(sentAt)]\n    | order(sentAt asc){ _id, "authorId": coalesce(author._ref, guestId), authorName, body, sentAt, speechKey }': MESSAGES_QUERY_RESULT;
+    '*[_type == "round" && kind == "room" && joinCode == $code && dateTime(expiresAt) > dateTime(now())][0]{\n    _id, title, expiresAt, guests[]{ guestId, memberId }\n  }': ROOM_BY_CODE_QUERY_RESULT;
+    'count(*[_type == "round" && kind == "room" && creatorHash == $creatorHash && _createdAt > $since])': RECENT_ROOMS_BY_CREATOR_QUERY_RESULT;
+    'count(*[_type == "round" && kind == "room" && dateTime(expiresAt) > dateTime(now())])': ACTIVE_ROOM_COUNT_QUERY_RESULT;
+    '*[_type == "round" && kind == "room" && dateTime(expiresAt) <= dateTime(now())][0...50]._id': EXPIRED_ROOMS_QUERY_RESULT;
+    '{\n    "inRoom": count(*[_type == "message" && round._ref == $id]),\n    "recentFromGuest": count(*[_type == "message" && round._ref == $id && guestId == $guestId && sentAt > $since])\n  }': GUEST_MESSAGE_COUNTS_QUERY_RESULT;
   }
 }
 // Lets @sanity/client releases that predate the global registry read it too

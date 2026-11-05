@@ -1,5 +1,5 @@
 import { client } from "@/sanity/client";
-import { getMember, getRoundAccess } from "@/lib/dal";
+import { getChatAccess } from "@/lib/dal";
 
 // A stream of "something changed" pings for one round. The browser refetches through
 // a server action, so the private dataset is never exposed. EventSource reconnects on
@@ -9,9 +9,7 @@ export const maxDuration = 300;
 
 export async function GET(request: Request, ctx: RouteContext<"/api/rounds/[id]/events">) {
   const { id } = await ctx.params;
-  const member = await getMember();
-  if (!member) return new Response("Sign in first", { status: 401 });
-  if (!(await getRoundAccess(id, member._id))) return new Response("Not in this round", { status: 403 });
+  if (!(await getChatAccess(id))) return new Response("Not in this chat", { status: 403 });
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

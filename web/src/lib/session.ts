@@ -32,6 +32,36 @@ export async function readSession(): Promise<{ memberId: string } | null> {
   }
 }
 
+const guestCookie = (roomId: string) => `room-${roomId}`;
+
+/** Who someone is in one temporary chat. Good until the chat ends, signed in or not. */
+export async function createGuestSession(roomId: string, guest: { guestId: string; name: string }, expiresAt: Date) {
+  const token = await new SignJWT({ roomId, ...guest })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(expiresAt)
+    .sign(key);
+  (await cookies()).set(guestCookie(roomId), token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    expires: expiresAt,
+  });
+}
+
+export async function readGuestSession(roomId: string): Promise<{ guestId: string; name: string } | null> {
+  const token = (await cookies()).get(guestCookie(roomId))?.value;
+  if (!token || !process.env.SESSION_SECRET) return null;
+  try {
+    const { payload } = await jwtVerify(token, key, { algorithms: ["HS256"] });
+    if (payload.roomId !== roomId || typeof payload.guestId !== "string" || typeof payload.name !== "string") return null;
+    return { guestId: payload.guestId, name: payload.name };
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteSession() {
   (await cookies()).delete(COOKIE);
 }
